@@ -3,136 +3,394 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>今天吃什么</title>
+  <title>🍽️ 今天吃什么 — 家庭菜单</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:760px;margin:24px auto;padding:0 14px;}
-    .card{border:1px solid #e6e6e6;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 18px rgba(0,0,0,.04)}
-    button{padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer}
-    button:hover{border-color:#bbb}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .tag{display:inline-block;border:1px solid #eee;border-radius:999px;padding:3px 10px;margin:4px 6px 0 0;font-size:12px;color:#555}
+    :root{--maxw:900px}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:var(--maxw);margin:20px auto;padding:12px;}
+    header{display:flex;align-items:center;gap:12px}
+    h1{margin:0;font-size:20px}
+    .card{border:1px solid #eee;border-radius:12px;padding:12px;margin:12px 0;background:#fff}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    button{padding:8px 12px;border-radius:10px;border:1px solid #ddd;background:#fafafa;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    .big{font-size:20px;font-weight:700;margin-top:8px}
     .muted{color:#666;font-size:13px}
-    .big{font-size:22px;font-weight:700}
-    .shake{animation:shake .25s linear 2}
+    .tag{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 8px;margin:4px 6px 0 0;font-size:12px;color:#555}
+    #resultCard{transition:transform .12s}
+    .shake{animation:shake .28s linear 1}
     @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+    label{font-size:13px}
+    input[type=text], textarea, select{padding:8px;border-radius:8px;border:1px solid #ddd;width:100%}
+    .col{flex:1;min-width:160px}
+    .small{font-size:13px;padding:6px;border-radius:8px}
+    footer{font-size:13px;color:#666;margin-top:8px}
+    .grid{display:grid;grid-template-columns:1fr 240px;gap:12px}
+    @media (max-width:800px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <h1>🍽️ 今天吃什么</h1>
-  <p class="muted">不纠结。让命运来。建议最多重选 3 次 😏</p>
+  <header>
+    <h1>🍽️ 今天吃什么 — 家庭菜单</h1>
+    <div class="muted">（已上线）</div>
+  </header>
 
-  <div class="card">
-    <div class="row" id="catButtons"></div>
-    <hr style="border:none;border-top:1px solid #eee;margin:14px 0;">
-    <div class="row">
-      <button id="rollBtn">🎡 命运之轮</button>
-      <button id="rerollBtn" disabled>不服再来一次</button>
-      <button id="resetBtn">重置重选次数</button>
-      <a href="./admin.html" style="margin-left:auto;align-self:center">后台加菜 →</a>
+  <div class="grid">
+    <!-- 左侧：主功能 -->
+    <div>
+      <div class="card">
+        <div class="muted">选择分类（先点分类再抽）</div>
+        <div id="catButtons" class="row" style="margin-top:8px"></div>
+
+        <hr style="border:none;border-top:1px solid #f0f0f0;margin:12px 0">
+
+        <div class="row" style="align-items:center">
+          <button id="rollBtn">🎡 单菜随机</button>
+          <button id="mealBtn">🍱 一荤一素一汤</button>
+          <button id="rerollBtn" disabled>🔁 不服再来一次</button>
+          <button id="resetBtn">♻️ 重置重选</button>
+          <a href="./admin.html" style="margin-left:auto">⚙️ 后台加菜</a>
+        </div>
+
+        <div style="margin-top:8px" class="muted">提示：最多重选 3 次</div>
+      </div>
+
+      <div id="controls" class="card">
+        <div class="row">
+          <div class="col">
+            <label>可用食材（用逗号分隔，系统会优先匹配菜名/标签）：</label>
+            <input id="ingredientsInput" type="text" placeholder="例如：番茄,鸡蛋,土豆" />
+          </div>
+          <div style="width:140px">
+            <label>可用时间</label>
+            <select id="timeSelect" class="small">
+              <option value="0">不限</option>
+              <option value="10">≤10 分钟</option>
+              <option value="20">≤20 分钟</option>
+              <option value="30">≤30 分钟</option>
+              <option value="60">≤60 分钟</option>
+            </select>
+          </div>
+          <div style="width:160px">
+            <label>厨具限制（逗号分隔）</label>
+            <input id="applianceInput" type="text" placeholder="例如：空气炸锅,电饭煲" />
+          </div>
+        </div>
+
+        <div style="margin-top:8px" class="muted">筛选说明：填写食材会优先匹配包含这些词的菜；厨具/时间会过滤不满足的菜。</div>
+      </div>
+
+      <div id="resultCard" class="card" style="display:none">
+        <div id="resultMeta" class="muted"></div>
+        <div id="resultName" class="big"></div>
+        <div id="resultTags" style="margin-top:8px"></div>
+        <div id="resultExtra" class="muted" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="muted">最近吃过（本地记录，7 天去重）</div>
+        <div id="recentList" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card">
+        <div class="muted">日历回顾（食用记录）</div>
+        <div id="historyList" style="margin-top:8px"></div>
+      </div>
     </div>
+
+    <!-- 右侧：偏好与设置 -->
+    <aside>
+      <div class="card">
+        <div class="muted">家庭成员偏好（屏蔽关键字或不吃的标签/食材）</div>
+        <div id="members" style="margin-top:8px"></div>
+        <div style="margin-top:8px" class="muted">添加成员名与逗号分隔的不吃项（名字和关键字）：</div>
+        <div style="margin-top:6px">
+          <input id="memberName" placeholder="成员名（例：爸爸）" style="width:46%;display:inline-block" />
+          <input id="memberAvoid" placeholder="不吃（例：香菜,辣）" style="width:50%;display:inline-block;margin-left:4%" />
+          <div style="margin-top:6px">
+            <button id="addMemberBtn">➕ 添加/更新成员</button>
+            <button id="clearMembersBtn">🧹 清空偏好</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="muted">快速操作</div>
+        <div style="margin-top:8px" class="row">
+          <button id="clearHistoryBtn">删除 7 天历史</button>
+          <button id="exportHistoryBtn">导出历史</button>
+        </div>
+        <div style="margin-top:10px" class="muted">提示：若想更强的跨设备后台，可升级到 Firebase（可选）。</div>
+      </div>
+
+      <div class="card">
+        <div class="muted">小说明</div>
+        <div class="muted" style="margin-top:8px">1) 后台加菜请使用 <a href="./admin.html">admin 页面</a> → 修改后 GitHub Commit 生效。2) 本地偏好/历史存于浏览器 localStorage。</div>
+      </div>
+    </aside>
   </div>
 
-  <div class="card" id="resultCard" style="display:none">
-    <div class="muted" id="resultMeta"></div>
-    <div class="big" id="resultName"></div>
-    <div id="resultTags"></div>
-  </div>
+  <footer>Made for family — 若要改样式或想加登录，我可以继续帮你。</footer>
 
 <script>
-let data, currentCatId = null;
+/* --------------------
+  基本数据加载与全局变量
+-------------------- */
+let data = null;
+let currentCatId = null;
 let rerollCount = 0;
 const MAX_REROLL = 3;
+const RECENT_KEY = "family_menu_recent_v2"; // 存放 {name, t}
+const MEMBER_KEY = "family_menu_members_v1"; // 存放成员偏好
+const EAT_HISTORY_KEY = "family_menu_eathistory_v1"; // 存放按天记录 {date: 'YYYY-MM-DD', items: [...]}
 
-const $ = (id)=>document.getElementById(id);
-const storeKey = "family_menu_recent"; // 用于“避免重复”的简单历史
+const $ = id => document.getElementById(id);
 
 async function loadData(){
-  const r = await fetch("./menu.json?v=" + Date.now());
-  data = await r.json();
-  renderCats();
+  try {
+    const res = await fetch("./menu.json?v=" + Date.now());
+    data = await res.json();
+    renderCats();
+    renderMembers();
+    renderRecent();
+    renderHistory();
+  } catch(e){
+    alert("加载 menu.json 失败，请确认文件存在并且是有效 JSON。");
+    console.error(e);
+  }
 }
 
+/* --------------------
+  分类与 UI
+-------------------- */
 function renderCats(){
   const box = $("catButtons");
   box.innerHTML = "";
+  if(!data || !data.categories) return;
   data.categories.forEach(c=>{
     const btn = document.createElement("button");
     btn.textContent = c.name;
     btn.onclick = ()=>{
       currentCatId = c.id;
-      [...box.children].forEach(b=>b.style.borderColor="#ddd");
-      btn.style.borderColor = "#000";
+      Array.from(box.children).forEach(b=>b.style.borderColor="#ddd");
+      btn.style.borderColor="#000";
     };
     box.appendChild(btn);
   });
 }
 
-function getRecent(){
-  try { return JSON.parse(localStorage.getItem(storeKey) || "[]"); } catch { return []; }
-}
+/* --------------------
+  本地历史 / 去重（7 天）
+-------------------- */
+function getRecent(){ try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; } }
 function pushRecent(name){
-  const recent = getRecent();
-  recent.unshift({name, t: Date.now()});
-  const trimmed = recent.slice(0, 20); // 只留最近20条
-  localStorage.setItem(storeKey, JSON.stringify(trimmed));
+  const arr = getRecent();
+  arr.unshift({name, t: Date.now()});
+  // 保留 60 条
+  localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0,60)));
+  // 也写进按天 history
+  pushHistory(name);
+  renderRecent();
+  renderHistory();
+}
+function renderRecent(){
+  const arr = getRecent().slice(0,20);
+  $("recentList").innerHTML = arr.map(x=>{
+    const d = new Date(x.t);
+    return `<div>${x.name} <span class="muted">(${d.toLocaleString()})</span></div>`;
+  }).join("");
+}
+function inLastNDays(name, days=7){
+  const cutoff = Date.now() - days*24*3600*1000;
+  return getRecent().some(x=>x.name===name && x.t >= cutoff);
 }
 
-function pickOne(items){
-  // 简单“避免重复”：最近5次出现过的，降低权重（这里直接过滤更狠一点）
-  const recentNames = getRecent().slice(0,5).map(x=>x.name);
-  const filtered = items.filter(x=>!recentNames.includes(x.name));
-  const pool = filtered.length ? filtered : items;
-  return pool[Math.floor(Math.random() * pool.length)];
+/* history by day */
+function pushHistory(name){
+  const key = EAT_HISTORY_KEY;
+  const today = new Date().toISOString().slice(0,10);
+  let all = JSON.parse(localStorage.getItem(key) || "{}");
+  if(!all[today]) all[today]=[];
+  all[today].push({name, t: Date.now()});
+  // keep 90 days
+  localStorage.setItem(key, JSON.stringify(all));
+}
+function renderHistory(){
+  const all = JSON.parse(localStorage.getItem(EAT_HISTORY_KEY) || "{}");
+  const keys = Object.keys(all).sort((a,b)=>b.localeCompare(a)).slice(0,14);
+  if(!keys.length){ $("historyList").innerHTML = "<div class='muted'>暂无记录</div>"; return; }
+  $("historyList").innerHTML = keys.map(d=>`<div><strong>${d}</strong>： ${all[d].map(i=>i.name).join(" · ")}</div>`).join("");
+}
+
+/* --------------------
+  成员偏好管理
+-------------------- */
+function getMembers(){ try { return JSON.parse(localStorage.getItem(MEMBER_KEY) || "[]"); } catch{ return []; } }
+function saveMembers(arr){ localStorage.setItem(MEMBER_KEY, JSON.stringify(arr)); renderMembers(); }
+function renderMembers(){
+  const box = $("members");
+  const arr = getMembers();
+  if(!arr.length){ box.innerHTML = "<div class='muted'>尚未添加成员偏好</div>"; return; }
+  box.innerHTML = arr.map(m=>`<div><strong>${m.name}</strong>：不吃【${m.avoid.join('，')}】 <button data-name="${m.name}" class="delMember">删除</button></div>`).join("");
+  Array.from(document.getElementsByClassName('delMember')).forEach(b=>{
+    b.onclick = ()=>{ const name=b.dataset.name; const arr=getMembers().filter(x=>x.name!==name); saveMembers(arr); };
+  });
+}
+$("addMemberBtn")?.addEventListener("click", ()=>{
+  const name = $("memberName").value.trim();
+  const avoid = $("memberAvoid").value.split(",").map(s=>s.trim()).filter(Boolean);
+  if(!name){ alert("请填写成员名"); return; }
+  const arr = getMembers();
+  const existing = arr.find(x=>x.name===name);
+  if(existing){ existing.avoid = avoid; } else arr.push({name, avoid});
+  saveMembers(arr);
+  $("memberName").value=""; $("memberAvoid").value="";
+});
+$("clearMembersBtn")?.addEventListener("click", ()=>{
+  if(confirm("清空所有成员偏好？")){ localStorage.removeItem(MEMBER_KEY); renderMembers(); }
+});
+
+/* --------------------
+  过滤逻辑（食材/时间/厨具/成员偏好/7天去重）
+-------------------- */
+function itemMatchesFilters(item){
+  // 时间
+  const maxTime = parseInt($("timeSelect").value || "0", 10);
+  if(maxTime>0 && item.time && item.time>0 && item.time>maxTime) return false;
+
+  // 厨具
+  const appliances = ($("applianceInput").value || "").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(appliances.length && item.tags){
+    // 如果用户只输入了特定厨具，但菜的 tags 没有该厨具，则排除（例如用户只有空气炸锅）
+    // 放宽逻辑：如果菜标注了任何厨具且其中不包含用户指定的任意一个，则认为不匹配
+    const tagLow = (item.tags||[]).map(t=>t.toLowerCase());
+    const anyMatch = appliances.some(a=> tagLow.includes(a));
+    if(!anyMatch) return false;
+  }
+
+  // 成员偏好（不吃关键字/标签）
+  const members = getMembers();
+  if(members.length){
+    for(const m of members){
+      for(const avoid of m.avoid){
+        const av = avoid.toLowerCase();
+        if(!av) continue;
+        if((item.name||"").toLowerCase().includes(av)) return false;
+        if((item.tags||[]).map(t=>t.toLowerCase()).includes(av)) return false;
+      }
+    }
+  }
+
+  // 最近 7 天不重复：完全排除
+  if(inLastNDays(item.name, 7)) return false;
+
+  return true;
+}
+
+/* --------------------
+  随机选择逻辑
+-------------------- */
+function pickOneFromPool(pool){
+  if(!pool.length) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function filterByIngredientsAndTime(items){
+  const ingredients = ($("ingredientsInput").value || "").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(!ingredients.length) return items.filter(itemMatchesFilters);
+  // 优先选包含任一 ingredient 的菜（在 name 或 tags）
+  const match = items.filter(i=>{
+    const nameLow = (i.name||"").toLowerCase();
+    const tagLow = (i.tags||[]).map(t=>t.toLowerCase());
+    return ingredients.some(ins => nameLow.includes(ins) || tagLow.includes(ins));
+  }).filter(itemMatchesFilters);
+  const fallback = items.filter(itemMatchesFilters);
+  return match.length ? match : fallback;
+}
+
+/* 单菜随机（roll） */
+function rollSingle(){
+  if(!currentCatId){ alert("先选个分类～"); return; }
+  const cat = data.categories.find(c=>c.id===currentCatId);
+  if(!cat || !cat.items?.length){ alert("这个分类还没菜，去后台加点吧～"); return; }
+  rerollCount = 0;
+  const pool = filterByIngredientsAndTime(cat.items);
+  const pick = pickOneFromPool(pool);
+  if(!pick){ alert("没有满足筛选条件的菜（请调整时间/厨具/食材或检查成员偏好）"); return; }
+  showResult(pick, cat.name);
+  $("rerollBtn").disabled = false;
 }
 
 function showResult(item, catName){
   $("resultCard").style.display = "block";
-  $("resultMeta").textContent = `分类：${catName}｜重选：${rerollCount} 次`;
+  $("resultMeta").textContent = `分类：${catName} ｜ 单菜模式 ｜ 重选 ${rerollCount} 次`;
   $("resultName").textContent = item.name;
   $("resultTags").innerHTML = (item.tags||[]).map(t=>`<span class="tag">${t}</span>`).join("");
-  $("resultCard").classList.remove("shake");
-  void $("resultCard").offsetWidth; // reflow
-  $("resultCard").classList.add("shake");
+  $("resultExtra").textContent = `预计用时：${item.time||"—"} 分钟，难度：${item.difficulty||"—"}`;
+  animateResult();
   pushRecent(item.name);
 }
 
-function roll(){
-  if(!currentCatId){
-    alert("先选个分类～");
-    return;
-  }
+/* 套餐逻辑：一荤一素一汤 */
+function pickByType(items, type){
+  const pool = items.filter(x => ((x.type||"").toLowerCase() === type.toLowerCase()));
+  const filtered = filterByIngredientsAndTime(pool);
+  return pickOneFromPool(filtered || []);
+}
+function rollMeal(){
+  if(!currentCatId){ alert("先选个分类～"); return; }
   const cat = data.categories.find(c=>c.id===currentCatId);
-  if(!cat || !cat.items?.length){
-    alert("这个分类还没菜，去后台加点吧～");
+  if(!cat || !cat.items?.length){ alert("这个分类还没菜，去后台加点吧～"); return; }
+  rerollCount = 0;
+  const meat = pickByType(cat.items, "荤");
+  const veg  = pickByType(cat.items, "素");
+  const soup = pickByType(cat.items, "汤");
+  if(!meat || !veg || !soup){
+    alert("当前分类需至少各有：荤 / 素 / 汤 各 1 道（请在 admin 添加 type 字段）");
     return;
   }
-  const item = pickOne(cat.items);
-  showResult(item, cat.name);
-
+  // 显示套餐
+  $("resultCard").style.display = "block";
+  $("resultMeta").textContent = `分类：${cat.name} ｜ 套餐模式 ｜ 重选 ${rerollCount} 次`;
+  $("resultName").textContent = `荤：${meat.name}  ·  素：${veg.name}  ·  汤：${soup.name}`;
+  const tags = [...new Set([...(meat.tags||[]), ...(veg.tags||[]), ...(soup.tags||[])])];
+  $("resultTags").innerHTML = tags.map(t=>`<span class="tag">${t}</span>`).join("");
+  $("resultExtra").textContent = `时间：${(meat.time||"—")} / ${(veg.time||"—")} / ${(soup.time||"—")} 分钟`;
+  animateResult();
+  [meat, veg, soup].forEach(i=>pushRecent(i.name));
   $("rerollBtn").disabled = false;
 }
 
-$("rollBtn").onclick = ()=>{
-  rerollCount = 0;
-  roll();
-};
+/* 动画 */
+function animateResult(){
+  $("resultCard").classList.remove("shake");
+  void $("resultCard").offsetWidth;
+  $("resultCard").classList.add("shake");
+}
 
+/* reroll */
+$("rollBtn").onclick = ()=>{ rerollCount = 0; rollSingle(); };
+$("mealBtn").onclick = ()=>{ rerollCount = 0; rollMeal(); };
 $("rerollBtn").onclick = ()=>{
   rerollCount++;
-  if(rerollCount > MAX_REROLL){
-    alert("你不是不想吃，你只是饿了。收手吧 😤");
-    rerollCount = MAX_REROLL;
-    return;
-  }
-  roll();
+  if(rerollCount > MAX_REROLL){ alert("别纠结了，收手吧 😤"); rerollCount = MAX_REROLL; return; }
+  // 根据上一次 result 模式重抽（简单方法：如果 resultName 含 '：' 则是套餐）
+  const meta = $("resultMeta").textContent || "";
+  if(meta.includes("套餐")) rollMeal(); else rollSingle();
 };
+$("resetBtn").onclick = ()=>{ rerollCount=0; alert("已重置重选次数"); };
 
-$("resetBtn").onclick = ()=>{
-  rerollCount = 0;
-  alert("重选次数已清零～");
-};
+/* 快速操作 */
+$("clearHistoryBtn").onclick = ()=>{ if(confirm("删除最近记录（7 天历史）？")){ localStorage.removeItem(RECENT_KEY); localStorage.removeItem(EAT_HISTORY_KEY); renderRecent(); renderHistory(); } };
+$("exportHistoryBtn").onclick = ()=>{ const all = localStorage.getItem(EAT_HISTORY_KEY)||"{}"; navigator.clipboard.writeText(all).then(()=>alert("已复制历史 JSON 到剪贴板")); };
 
+/* 初始化 */
 loadData();
+
+/* render members on load already handled */
+
+/* small helpers for admin/debug */
+window._debug_reload = loadData;
 </script>
 </body>
 </html>
+
