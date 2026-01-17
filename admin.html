@@ -22,13 +22,19 @@
     @media (max-width: 860px){ .split{grid-template-columns:1fr} }
     ul{margin:8px 0 0 18px}
     .danger{color:#b00020}
+    code{background:#f6f6f6;padding:2px 6px;border-radius:8px}
   </style>
 </head>
 <body>
-  <h1>🧰 菜单后台</h1>
+  <div class="row" style="justify-content:space-between">
+    <h1>🧰 菜单后台</h1>
+    <a href="./index.html">← 返回抽菜单</a>
+  </div>
+
   <p class="muted">
-    这个项目是静态站：后台页可以“编辑/校验/复制”，但<strong>不能直接写回服务器</strong>。
-    你需要把导出的 JSON 粘贴回 GitHub 的 <code>menu.json</code> 并提交（Commit），网页才会全家同步更新。
+    说明：这是静态站后台，能“编辑/校验/复制”，但<strong>不能直接写回服务器</strong>。
+    菜单库要全家同步：请把导出的 JSON 粘贴回 GitHub 的 <code>menu.json</code> 并 Commit。
+    <br>成员偏好/可用食材：保存到当前设备浏览器（localStorage），同一台设备打开首页会生效。
   </p>
 
   <div class="card">
@@ -39,7 +45,7 @@
         <button id="copyBtn">复制 JSON（粘贴回 GitHub）</button>
         <button id="downloadBtn">下载 menu.json</button>
       </div>
-      <a href="./index.html">← 返回抽菜单</a>
+      <span class="pill" id="statPill">未加载数据</span>
     </div>
     <p class="muted" id="msg"></p>
 
@@ -70,8 +76,12 @@
 
         <div class="row">
           <label>标签（逗号分隔）</label>
-          <input id="tagsInp" placeholder="例如：下饭,不辣,快手" style="flex:1;min-width:220px" />
+          <input id="tagsInp" placeholder="例如：下饭,不辣,鸡蛋,番茄" style="flex:1;min-width:220px" />
         </div>
+
+        <p class="muted" style="margin:0 0 10px 0">
+          ✅ 建议把<strong>食材词</strong>也写进 tags（如：鸡蛋/番茄/土豆/豆腐），这样首页“可用食材”匹配更明显。
+        </p>
 
         <div class="row">
           <label>用时(分钟)</label>
@@ -83,18 +93,18 @@
 
         <div class="row">
           <button id="addDishBtn">添加到分类</button>
-          <span class="pill" id="statPill">未加载数据</span>
+          <span class="muted">添加后会自动写入下方 JSON</span>
         </div>
 
         <p class="muted">
-          ⚠️ 添加后会自动写入下方 JSON 文本框。记得最后点“复制 JSON”，粘贴回 GitHub 的 <code>menu.json</code> 并 Commit。
+          ⚠️ 添加后记得点“复制 JSON”，去 GitHub 打开 <code>menu.json</code> 覆盖粘贴并 Commit。
         </p>
       </div>
 
       <div class="card" style="margin:0">
-        <h3 style="margin:0 0 8px 0">👨‍👩‍👧‍👦 成员偏好（下一步 index 会读取生效）</h3>
+        <h3 style="margin:0 0 8px 0">👨‍👩‍👧‍👦 成员偏好（首页会生效）</h3>
         <p class="muted" style="margin-top:0">
-          这里保存到当前设备浏览器（localStorage）。下一步我会在 index.html 里把它接上：随机时自动避开“不吃/讨厌”的标签。
+          “避雷标签”会直接过滤；“偏爱标签”会提高抽中概率。
         </p>
 
         <div class="row">
@@ -120,9 +130,9 @@
 
         <hr style="border:none;border-top:1px solid #eee;margin:14px 0;">
 
-        <h3 style="margin:0 0 8px 0">🥬 可用食材（下一步 index 会读取生效）</h3>
+        <h3 style="margin:0 0 8px 0">🥬 可用食材（首页会生效）</h3>
         <p class="muted" style="margin-top:0">
-          目前我们先做“手动输入食材列表”。下一步 index.html 会支持：勾选/输入食材后，优先推荐包含相关标签的菜（你也可以后面扩展成 ingredients 字段）。
+          这里填写你冰箱里“现在就能用”的食材（逗号分隔）。首页会按这些词对菜名/tags 做加权推荐。
         </p>
 
         <div class="row">
@@ -135,6 +145,10 @@
           <button id="clearPantryBtn" class="danger">清空食材</button>
           <span class="pill" id="pantryPill">未保存</span>
         </div>
+
+        <p class="muted" style="margin:10px 0 0 0">
+          ✅ 保存后回首页刷新即可看到“可用食材”区域与提示（下一步我会在 index.html 加回输入/开关）。
+        </p>
       </div>
     </div>
 
@@ -143,9 +157,7 @@
     <h3 style="margin:0 0 8px 0">menu.json（可直接编辑）</h3>
     <textarea id="ta" placeholder="点“加载当前 menu.json”后会显示内容"></textarea>
 
-    <p class="muted">
-      小技巧：你可以在这里直接改完 JSON，再点“校验 JSON”确认没问题。
-    </p>
+    <p class="muted">改完可以点“校验 JSON”，确认通过再复制粘贴回 GitHub。</p>
   </div>
 
 <script>
@@ -189,10 +201,8 @@ function refreshCategorySelect(){
     opt.textContent = `${c.name}（${c.items?.length||0}）`;
     sel.appendChild(opt);
   });
-  const first = data.categories[0];
   $("statPill").textContent = `已加载：${data.categories.length} 个分类`;
-  // 默认选中第一个
-  sel.value = first.id;
+  sel.value = data.categories[0].id;
 }
 
 function syncTextarea(){
@@ -211,11 +221,8 @@ async function loadMenu(){
     return;
   }
   data = parsed.value;
-  // 结构兜底
   if(!Array.isArray(data.categories)) data.categories = [];
-  data.categories.forEach(c=>{
-    if(!Array.isArray(c.items)) c.items = [];
-  });
+  data.categories.forEach(c=>{ if(!Array.isArray(c.items)) c.items = []; });
   refreshCategorySelect();
   setMsg("✅ 已加载当前 menu.json（可以开始添菜了）");
 }
@@ -229,12 +236,9 @@ $("validateBtn").onclick = ()=>{
     return;
   }
   setMsg("✅ JSON 校验通过");
-  // 同步 data，并刷新分类列表
   data = parsed.value;
   if(!Array.isArray(data.categories)) data.categories = [];
-  data.categories.forEach(c=>{
-    if(!Array.isArray(c.items)) c.items = [];
-  });
+  data.categories.forEach(c=>{ if(!Array.isArray(c.items)) c.items = []; });
   refreshCategorySelect();
 };
 
@@ -263,30 +267,24 @@ $("addDishBtn").onclick = ()=>{
     setMsg("找不到分类（可能 JSON 结构有问题）", false);
     return;
   }
-
-  // 去重：同分类同名不重复
   if(cat.items.some(x => (x.name||"").trim() === name)){
     setMsg("这个分类里已经有同名菜了（避免重复）", false);
     return;
   }
 
-  const item = {
+  cat.items.push({
     name,
     type,
     tags,
     time: Number.isFinite(time) ? time : 0,
     difficulty: Number.isFinite(difficulty) ? difficulty : 0
-  };
-  cat.items.push(item);
+  });
 
-  // 同步到 textarea
   syncTextarea();
   refreshCategorySelect();
-
-  // 清空输入
   $("nameInp").value = "";
   $("tagsInp").value = "";
-  setMsg(`✅ 已添加：${cat.name} / ${type} / ${item.name}（记得复制 JSON 粘贴回 GitHub 并 Commit）`);
+  setMsg(`✅ 已添加：${cat.name} / ${type} / ${name}（记得复制 JSON 回 GitHub 并 Commit）`);
 };
 
 $("copyBtn").onclick = async ()=>{
@@ -298,8 +296,8 @@ $("copyBtn").onclick = async ()=>{
   const pretty = JSON.stringify(parsed.value, null, 2);
   try{
     await navigator.clipboard.writeText(pretty);
-    setMsg("✅ 已复制到剪贴板：去 GitHub 打开 menu.json → 粘贴覆盖 → Commit changes");
-  }catch(e){
+    setMsg("✅ 已复制：去 GitHub 打开 menu.json → 粘贴覆盖 → Commit changes");
+  }catch{
     setMsg("❌ 复制失败（浏览器权限限制），请手动全选文本框内容复制。", false);
   }
 };
@@ -318,25 +316,20 @@ $("downloadBtn").onclick = ()=>{
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setMsg("✅ 已下载 menu.json（仍需粘贴回 GitHub 才会让站点同步更新）");
+  setMsg("✅ 已下载 menu.json（仍需粘贴回 GitHub 才会全家同步更新）");
 };
 
-// ---------- 偏好/食材：存到 localStorage，下一步 index.html 会读取 ----------
+// -------- 偏好/食材：保存到 localStorage（首页 index 会读取） --------
 function loadPrefsUI(){
   const raw = localStorage.getItem(MENU_KEY_PREFS);
-  if(!raw){
-    $("prefsPill").textContent = "未保存";
-    return;
-  }
+  if(!raw){ $("prefsPill").textContent = "未保存"; return; }
   try{
     const obj = JSON.parse(raw);
     $("membersInp").value = (obj.members||[]).join(",");
     $("avoidTagsInp").value = (obj.avoid_tags||[]).join(",");
     $("loveTagsInp").value = (obj.love_tags||[]).join(",");
-    $("prefsPill").textContent = "已从本设备载入";
-  }catch{
-    $("prefsPill").textContent = "读取失败";
-  }
+    $("prefsPill").textContent = "已载入";
+  }catch{ $("prefsPill").textContent = "读取失败"; }
 }
 
 $("savePrefsBtn").onclick = ()=>{
@@ -347,7 +340,7 @@ $("savePrefsBtn").onclick = ()=>{
   };
   localStorage.setItem(MENU_KEY_PREFS, JSON.stringify(obj));
   $("prefsPill").textContent = "✅ 已保存";
-  setMsg("✅ 偏好已保存到本设备（下一步 index 会读取并生效）");
+  setMsg("✅ 偏好已保存到本设备（回首页刷新即可生效）");
 };
 
 $("clearPrefsBtn").onclick = ()=>{
@@ -361,34 +354,28 @@ $("clearPrefsBtn").onclick = ()=>{
 
 function loadPantryUI(){
   const raw = localStorage.getItem(MENU_KEY_PANTRY);
-  if(!raw){
-    $("pantryPill").textContent = "未保存";
-    return;
-  }
+  if(!raw){ $("pantryPill").textContent = "未保存"; return; }
   try{
     const obj = JSON.parse(raw);
     $("pantryInp").value = (obj.items||[]).join(",");
-    $("pantryPill").textContent = "已从本设备载入";
-  }catch{
-    $("pantryPill").textContent = "读取失败";
-  }
+    $("pantryPill").textContent = "已载入";
+  }catch{ $("pantryPill").textContent = "读取失败"; }
 }
 
 $("savePantryBtn").onclick = ()=>{
   const obj = { items: normalizeCSV($("pantryInp").value) };
   localStorage.setItem(MENU_KEY_PANTRY, JSON.stringify(obj));
   $("pantryPill").textContent = "✅ 已保存";
-  setMsg("✅ 食材已保存到本设备（下一步 index 会读取并生效）");
+  setMsg("✅ 可用食材已保存到本设备（回首页刷新即可生效）");
 };
 
 $("clearPantryBtn").onclick = ()=>{
   localStorage.removeItem(MENU_KEY_PANTRY);
   $("pantryInp").value = "";
   $("pantryPill").textContent = "已清空";
-  setMsg("✅ 已清空食材（本设备）");
+  setMsg("✅ 已清空可用食材（本设备）");
 };
 
-// 初始载入偏好/食材 UI
 loadPrefsUI();
 loadPantryUI();
 </script>
