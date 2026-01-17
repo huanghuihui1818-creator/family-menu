@@ -5,205 +5,142 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>🍽️ 今天吃什么</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:980px;margin:24px auto;padding:0 14px;line-height:1.4}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:980px;margin:24px auto;padding:0 14px}
     h1{margin:6px 0 10px}
     .muted{color:#666;font-size:13px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     button{padding:10px 14px;border-radius:14px;border:1px solid #ddd;background:#fff;cursor:pointer}
     button.primary{background:#111;color:#fff;border-color:#111}
-    button:hover{border-color:#999}
     button[disabled]{opacity:.45}
-    input{border:1px solid #ddd;border-radius:12px;padding:10px 12px;font-size:14px}
-    .card{border:1px solid #e6e6e6;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 10px 22px rgba(0,0,0,.04)}
+    input{border:1px solid #ddd;border-radius:12px;padding:10px 12px}
+    .card{border:1px solid #e6e6e6;border-radius:18px;padding:16px;margin:12px 0}
     .chips{display:flex;gap:8px;flex-wrap:wrap}
     .chip{padding:8px 12px;border-radius:999px;border:1px solid #e6e6e6;cursor:pointer}
     .chip.active{background:#111;color:#fff;border-color:#111}
     .tag{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px;margin-top:6px}
     .big{font-size:22px;font-weight:700}
-    .shake{animation:shake .35s}
-    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}100%{transform:translateX(0)}}
-    ul{margin:8px 0 0 18px}
     .pill{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;background:#fafafa}
-    .danger{color:#b00020}
   </style>
 </head>
 <body>
 
 <div class="row" style="justify-content:space-between">
   <h1>🍽️ 今天吃什么</h1>
-  <a href="./admin.html">后台加菜 →</a>
+  <a href="./admin.html">后台 →</a>
 </div>
 
 <p class="muted" id="status">加载中…</p>
 
-<!-- 分类选择 -->
+<!-- 分类 -->
 <div class="card">
   <h3>选择分类</h3>
   <div class="chips" id="cats"></div>
 </div>
 
-<!-- 可用食材（网页端） -->
+<!-- 冰箱反推状态 -->
 <div class="card">
-  <h3>🥬 可用食材（影响推荐）</h3>
-  <p class="muted">输入你现在能用的食材，匹配的菜会更容易被选中</p>
-  <div class="row">
-    <input id="pantryInput" placeholder="如：鸡蛋,番茄,土豆,豆腐" style="flex:1;min-width:240px">
-    <button id="savePantryBtn">保存</button>
-    <button id="clearPantryBtn">清空</button>
-    <span class="pill" id="pantryHint">未设置</span>
-  </div>
+  <h3>🥬 冰箱反推</h3>
+  <p class="muted" id="pantryStatus">未设置</p>
 </div>
 
-<!-- 抽菜单 -->
+<!-- 抽取 -->
 <div class="card">
   <div class="row">
     <button class="primary" id="rollBtn">🎡 单菜</button>
     <button id="mealBtn">🍱 一荤一素一汤</button>
     <button id="rerollBtn" disabled>不服再来一次</button>
-    <button id="resetBtn">重置</button>
   </div>
 
-  <div id="resultCard" class="card" style="display:none;margin-top:14px">
+  <div id="resultCard" class="card" style="display:none;margin-top:12px">
     <div class="muted" id="resultMeta"></div>
     <div class="big" id="resultName"></div>
     <div id="resultTags"></div>
-    <div class="row" style="margin-top:12px">
-      <button class="primary" id="confirmBtn">✅ 就吃它</button>
-      <button id="cancelBtn">只是看看</button>
-      <span class="muted" id="confirmHint"></span>
-    </div>
   </div>
-</div>
-
-<!-- 最近吃过 -->
-<div class="card">
-  <h3>最近吃过（确认后才记录）</h3>
-  <ul id="recentList"></ul>
-  <button class="danger" id="clearRecentBtn">清空记录</button>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
 
-const KEY_PANTRY = "family_menu_pantry_v1";
-const KEY_PREFS  = "family_menu_prefs_v1";
-const KEY_RECENT = "family_menu_recent_v2";
+const KEY_PANTRY = "family_menu_pantry_v2";
 
-let data=null, currentCatId=null, rerollCount=0, pending=null;
+let data=null, currentCatId=null;
 
-/* ---------- 本地数据 ---------- */
-const loadPantry = ()=>{ try{ return JSON.parse(localStorage.getItem(KEY_PANTRY))||{items:[]} }catch{return{items:[]}} };
-const savePantry = arr => localStorage.setItem(KEY_PANTRY, JSON.stringify({items:arr}));
-const loadPrefs = ()=>{ try{ return JSON.parse(localStorage.getItem(KEY_PREFS))||{} }catch{return{}} };
-const loadRecent = ()=>{ try{ return JSON.parse(localStorage.getItem(KEY_RECENT))||[] }catch{return[]} };
-const saveRecent = arr => localStorage.setItem(KEY_RECENT, JSON.stringify(arr));
-
-/* ---------- 初始化可用食材 UI ---------- */
-function initPantryUI(){
-  const p = loadPantry().items||[];
-  $("pantryInput").value = p.join(",");
-  $("pantryHint").textContent = p.length ? "已设置" : "未设置";
-}
-$("savePantryBtn").onclick = ()=>{
-  const items = $("pantryInput").value.split(",").map(x=>x.trim()).filter(Boolean);
-  savePantry(items);
-  $("pantryHint").textContent = items.length ? "已保存" : "未设置";
-};
-$("clearPantryBtn").onclick = ()=>{
-  savePantry([]);
-  $("pantryInput").value="";
-  $("pantryHint").textContent="已清空";
-};
-
-/* ---------- 随机逻辑 ---------- */
-function weightedPick(items){
-  const prefs = loadPrefs();
-  const pantry = loadPantry().items||[];
-  const recentSet = new Set(loadRecent().map(x=>x.name));
-
-  const pool = items.filter(it=>{
-    if((prefs.avoid_tags||[]).some(t=>it.tags?.includes(t))) return false;
-    if(recentSet.has(it.name)) return false;
-    return true;
-  });
-
-  if(!pool.length) return null;
-
-  const weights = pool.map(it=>{
-    let w = 1;
-    (prefs.love_tags||[]).forEach(t=>{ if(it.tags?.includes(t)) w+=3; });
-    pantry.forEach(f=>{
-      if(it.name.includes(f) || it.tags?.includes(f)) w+=2;
-    });
-    return w;
-  });
-
-  let r = Math.random()*weights.reduce((a,b)=>a+b,0);
-  for(let i=0;i<pool.length;i++){ if((r-=weights[i])<=0) return pool[i]; }
-  return pool[pool.length-1];
+/* ---------- 冰箱 ---------- */
+function loadPantry(){
+  try{
+    return JSON.parse(localStorage.getItem(KEY_PANTRY)) || { items:[], mode:"suggest" };
+  }catch{
+    return { items:[], mode:"suggest" };
+  }
 }
 
-/* ---------- 渲染 ---------- */
-function showResult(meta,name,tags){
-  $("resultCard").style.display="block";
-  $("resultMeta").textContent=meta;
-  $("resultName").textContent=name;
-  $("resultTags").innerHTML=(tags||[]).map(t=>`<span class="tag">${t}</span>`).join("");
-  $("resultCard").classList.remove("shake"); void $("resultCard").offsetWidth; $("resultCard").classList.add("shake");
+function pantryMatches(item, pantry){
+  if(!pantry.items.length) return false;
+  return pantry.items.some(f =>
+    item.name.includes(f) ||
+    (item.tags||[]).includes(f)
+  );
+}
+
+/* ---------- 抽取 ---------- */
+function pickItem(items){
+  const pantry = loadPantry();
+  let pool = items;
+
+  if(pantry.mode === "strict"){
+    pool = items.filter(it => pantryMatches(it, pantry));
+    if(!pool.length) return null;
+  }
+
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 
 /* ---------- 单菜 ---------- */
 function rollSingle(){
   const cat = data.categories.find(c=>c.id===currentCatId);
-  const pick = weightedPick(cat.items);
-  if(!pick){ alert("没有可选菜了"); return; }
-  pending=[pick];
+  const pick = pickItem(cat.items);
+  if(!pick){
+    alert("❌ 冰箱里的食材暂时做不了这个分类的菜");
+    return;
+  }
   showResult(`单菜｜${cat.name}`, pick.name, pick.tags);
-  $("rerollBtn").disabled=false;
 }
 
 /* ---------- 套餐 ---------- */
 function rollMeal(){
-  const m=data.categories.find(c=>c.id==="meat")||{};
-  const v=data.categories.find(c=>c.id==="veg")||{};
-  const s=data.categories.find(c=>c.id==="soup")||{};
-  if(!m.items||!v.items||!s.items){ alert("需要荤/素/汤分类"); return; }
-  const a=weightedPick(m.items), b=weightedPick(v.items), c=weightedPick(s.items);
-  if(!a||!b||!c){ alert("套餐抽取失败"); return; }
-  pending=[a,b,c];
-  showResult("一荤一素一汤", `荤：${a.name} · 素：${b.name} · 汤：${c.name}`, [...new Set([...a.tags,...b.tags,...c.tags])]);
-  $("rerollBtn").disabled=false;
+  const pantry = loadPantry();
+  const m = data.categories.find(c=>c.id==="meat");
+  const v = data.categories.find(c=>c.id==="veg");
+  const s = data.categories.find(c=>c.id==="soup");
+
+  if(!m||!v||!s){ alert("需要 荤 / 素 / 汤 分类"); return; }
+
+  const a = pickItem(m.items);
+  const b = pickItem(v.items);
+  const c = pickItem(s.items);
+
+  if(!a||!b||!c){
+    alert("❌ 冰箱里的食材暂时无法组成一荤一素一汤");
+    return;
+  }
+
+  showResult(
+    "一荤一素一汤",
+    `荤：${a.name} · 素：${b.name} · 汤：${c.name}`,
+    [...new Set([...(a.tags||[]),...(b.tags||[]),...(c.tags||[])])]
+  );
 }
 
-/* ---------- 确认 ---------- */
-$("confirmBtn").onclick=()=>{
-  const rec=loadRecent();
-  pending.forEach(it=>rec.push({name:it.name,date:new Date().toISOString()}));
-  saveRecent(rec);
-  renderRecent();
-  $("confirmHint").textContent="已记录，下次会避开";
-};
-
-/* ---------- 最近 ---------- */
-function renderRecent(){
-  const ul=$("recentList"); ul.innerHTML="";
-  loadRecent().slice(-20).reverse().forEach(x=>{
-    const li=document.createElement("li");
-    li.textContent=x.name;
-    ul.appendChild(li);
-  });
+/* ---------- 显示 ---------- */
+function showResult(meta,name,tags){
+  $("resultCard").style.display="block";
+  $("resultMeta").textContent=meta;
+  $("resultName").textContent=name;
+  $("resultTags").innerHTML=(tags||[]).map(t=>`<span class="tag">${t}</span>`).join("");
 }
-$("clearRecentBtn").onclick=()=>{ saveRecent([]); renderRecent(); };
-
-/* ---------- 事件 ---------- */
-$("rollBtn").onclick=()=>{ rerollCount=0; rollSingle(); };
-$("mealBtn").onclick=()=>{ rerollCount=0; rollMeal(); };
-$("rerollBtn").onclick=()=>{ pending.length===1?rollSingle():rollMeal(); };
-$("resetBtn").onclick=()=>{ pending=null; $("resultCard").style.display="none"; $("rerollBtn").disabled=true; };
-$("cancelBtn").onclick=()=>{ $("confirmHint").textContent="未记录"; };
 
 /* ---------- 初始化 ---------- */
-fetch("./menu.json?v="+Date.now())
+fetch("./menu.json")
   .then(r=>r.json())
   .then(j=>{
     data=j;
@@ -213,14 +150,25 @@ fetch("./menu.json?v="+Date.now())
       const d=document.createElement("div");
       d.className="chip"+(i===0?" active":"");
       d.textContent=c.name;
-      d.onclick=()=>{ currentCatId=c.id; [...cats.children].forEach(x=>x.classList.remove("active")); d.classList.add("active"); };
+      d.onclick=()=>{
+        currentCatId=c.id;
+        [...cats.children].forEach(x=>x.classList.remove("active"));
+        d.classList.add("active");
+      };
       cats.appendChild(d);
       if(i===0) currentCatId=c.id;
     });
   });
 
-initPantryUI();
-renderRecent();
+const pantry = loadPantry();
+$("pantryStatus").textContent =
+  pantry.items.length
+    ? `模式：${pantry.mode==="strict"?"严格反推":"推荐"} ｜ 食材：${pantry.items.join("、")}`
+    : "未设置（去后台配置）";
+
+$("rollBtn").onclick = rollSingle;
+$("mealBtn").onclick = rollMeal;
 </script>
+
 </body>
 </html>
