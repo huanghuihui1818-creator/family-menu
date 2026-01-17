@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>菜单后台</title>
+  <style>
+    body{font-family:system-ui;max-width:900px;margin:24px auto;padding:0 14px;}
+    textarea{width:100%;min-height:380px;border:1px solid #ddd;border-radius:12px;padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+    button{padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer;margin-right:8px}
+    .muted{color:#666;font-size:13px}
+  </style>
+</head>
+<body>
+  <h1>🧰 菜单后台</h1>
+  <p class="muted">改完后点“导出 JSON”，把内容复制回 GitHub 的 menu.json 文件即可。</p>
+
+  <div>
+    <button id="loadBtn">加载当前 menu.json</button>
+    <button id="validateBtn">校验 JSON</button>
+    <button id="exportBtn">导出 JSON（复制用）</button>
+    <a href="./index.html">← 返回抽菜单</a>
+  </div>
+
+  <p class="muted" id="msg"></p>
+  <textarea id="ta" placeholder="这里会显示 menu.json 内容"></textarea>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+function setMsg(t){ $("msg").textContent = t; }
+
+$("loadBtn").onclick = async ()=>{
+  const r = await fetch("./menu.json?v=" + Date.now());
+  const txt = await r.text();
+  $("ta").value = txt;
+  setMsg("已加载当前 menu.json");
+};
+
+$("validateBtn").onclick = ()=>{
+  try{
+    JSON.parse($("ta").value);
+    setMsg("✅ JSON 正常");
+  }catch(e){
+    setMsg("❌ JSON 有问题： " + e.message);
+  }
+};
+
+$("exportBtn").onclick = async ()=>{
+  try{
+    const obj = JSON.parse($("ta").value);
+    const pretty = JSON.stringify(obj, null, 2);
+    await navigator.clipboard.writeText(pretty);
+    setMsg("✅ 已复制到剪贴板：去 GitHub 打开 menu.json 粘贴覆盖并提交即可");
+  }catch(e){
+    setMsg("❌ 无法导出： " + e.message);
+  }
+};
+</script>
+</body>
+</html>
