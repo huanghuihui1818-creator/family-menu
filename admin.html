@@ -1,115 +1,396 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>菜单后台 — 家庭菜单</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🧰 菜单后台</title>
   <style>
-    body{font-family:system-ui;max-width:1000px;margin:20px auto;padding:12px;}
-    .card{border:1px solid #eee;border-radius:10px;padding:12px;margin-bottom:12px}
-    textarea{width:100%;min-height:360px;border:1px solid #ddd;border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace}
-    input,select{padding:8px;border-radius:8px;border:1px solid #ddd;width:100%}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fafafa;cursor:pointer}
-    label{font-size:13px}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:980px;margin:24px auto;padding:0 14px;line-height:1.4}
+    .card{border:1px solid #e6e6e6;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 18px rgba(0,0,0,.04)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    label{font-size:13px;color:#555}
+    input,select,textarea{border:1px solid #ddd;border-radius:12px;padding:10px 12px;font-size:14px}
+    input,select{min-width:170px}
+    textarea{width:100%;min-height:320px;font-family:ui-monospace,Menlo,Consolas,monospace}
+    button{padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    button:hover{border-color:#bbb}
     .muted{color:#666;font-size:13px}
+    .ok{color:#0a7a31}
+    .bad{color:#b00020}
+    .pill{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;color:#555;background:#fafafa}
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 860px){ .split{grid-template-columns:1fr} }
+    ul{margin:8px 0 0 18px}
+    .danger{color:#b00020}
   </style>
 </head>
 <body>
-  <h1>🧰 菜单后台（编辑 & 表单加菜）</h1>
-  <div class="card">
-    <div class="row">
-      <button id="loadBtn">加载当前 menu.json</button>
-      <button id="validateBtn">校验 JSON</button>
-      <button id="exportBtn">导出 JSON（复制到剪贴板）</button>
-      <a href="./index.html" style="margin-left:auto">← 返回前端</a>
-    </div>
-    <p class="muted">说明：修改完成后，把复制的 JSON 粘贴回 GitHub 的 menu.json 并 Commit，Cloudflare Pages 会自动生效。</p>
-  </div>
+  <h1>🧰 菜单后台</h1>
+  <p class="muted">
+    这个项目是静态站：后台页可以“编辑/校验/复制”，但<strong>不能直接写回服务器</strong>。
+    你需要把导出的 JSON 粘贴回 GitHub 的 <code>menu.json</code> 并提交（Commit），网页才会全家同步更新。
+  </p>
 
   <div class="card">
-    <label>menu.json 内容（编辑后请校验）</label>
-    <textarea id="ta" placeholder="加载后显示"></textarea>
-  </div>
-
-  <div class="card">
-    <h3>快速表单：追加单条菜到指定分类（安全，避免 JSON 语法错）</h3>
-    <div class="row">
-      <div style="flex:1">
-        <label>分类 ID（例如：meat / veg / soup / staple）</label>
-        <input id="formCat" placeholder="例如：meat" />
-        <label style="margin-top:8px">菜名</label>
-        <input id="formName" placeholder="例如：鱼香肉丝" />
-        <label style="margin-top:8px">类型（荤/素/汤/主食）</label>
-        <select id="formType">
-          <option value="荤">荤</option>
-          <option value="素">素</option>
-          <option value="汤">汤</option>
-          <option value="主食">主食</option>
-        </select>
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button id="loadBtn">加载当前 menu.json</button>
+        <button id="validateBtn">校验 JSON</button>
+        <button id="copyBtn">复制 JSON（粘贴回 GitHub）</button>
+        <button id="downloadBtn">下载 menu.json</button>
       </div>
-      <div style="width:260px">
-        <label>标签（逗号分隔）</label>
-        <input id="formTags" placeholder="例如：下饭,快手" />
-        <label style="margin-top:8px">预计用时（分钟）</label>
-        <input id="formTime" placeholder="例如：25" />
-        <label style="margin-top:8px">难度（1-4）</label>
-        <input id="formDiff" placeholder="例如：2" />
-        <div style="margin-top:8px">
-          <button id="appendBtn">➕ 追加到 menu.json 文本框</button>
+      <a href="./index.html">← 返回抽菜单</a>
+    </div>
+    <p class="muted" id="msg"></p>
+
+    <div class="split">
+      <div class="card" style="margin:0">
+        <h3 style="margin:0 0 8px 0">➕ 快速添菜（不需要手写 JSON）</h3>
+        <p class="muted" style="margin-top:0">
+          先点“加载当前 menu.json”，系统会识别分类。然后选分类/类型，填菜名即可。
+        </p>
+
+        <div class="row">
+          <label>分类</label>
+          <select id="catSel"></select>
+
+          <label>类型</label>
+          <select id="typeSel">
+            <option value="荤">荤</option>
+            <option value="素">素</option>
+            <option value="汤">汤</option>
+            <option value="主食">主食</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label>菜名</label>
+          <input id="nameInp" placeholder="例如：鱼香肉丝" style="flex:1;min-width:220px" />
+        </div>
+
+        <div class="row">
+          <label>标签（逗号分隔）</label>
+          <input id="tagsInp" placeholder="例如：下饭,不辣,快手" style="flex:1;min-width:220px" />
+        </div>
+
+        <div class="row">
+          <label>用时(分钟)</label>
+          <input id="timeInp" type="number" min="0" step="1" value="20" />
+
+          <label>难度(0-4)</label>
+          <input id="diffInp" type="number" min="0" max="4" step="1" value="2" />
+        </div>
+
+        <div class="row">
+          <button id="addDishBtn">添加到分类</button>
+          <span class="pill" id="statPill">未加载数据</span>
+        </div>
+
+        <p class="muted">
+          ⚠️ 添加后会自动写入下方 JSON 文本框。记得最后点“复制 JSON”，粘贴回 GitHub 的 <code>menu.json</code> 并 Commit。
+        </p>
+      </div>
+
+      <div class="card" style="margin:0">
+        <h3 style="margin:0 0 8px 0">👨‍👩‍👧‍👦 成员偏好（下一步 index 会读取生效）</h3>
+        <p class="muted" style="margin-top:0">
+          这里保存到当前设备浏览器（localStorage）。下一步我会在 index.html 里把它接上：随机时自动避开“不吃/讨厌”的标签。
+        </p>
+
+        <div class="row">
+          <label>成员名字（逗号分隔）</label>
+          <input id="membersInp" placeholder="例如：爸爸,妈妈,孩子" style="flex:1;min-width:220px" />
+        </div>
+
+        <div class="row">
+          <label>全家避雷标签（逗号分隔）</label>
+          <input id="avoidTagsInp" placeholder="例如：辣,香菜,内脏" style="flex:1;min-width:220px" />
+        </div>
+
+        <div class="row">
+          <label>全家偏爱标签（逗号分隔）</label>
+          <input id="loveTagsInp" placeholder="例如：快手,清淡,下饭" style="flex:1;min-width:220px" />
+        </div>
+
+        <div class="row">
+          <button id="savePrefsBtn">保存偏好到本设备</button>
+          <button id="clearPrefsBtn" class="danger">清空偏好</button>
+          <span class="pill" id="prefsPill">未保存</span>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #eee;margin:14px 0;">
+
+        <h3 style="margin:0 0 8px 0">🥬 可用食材（下一步 index 会读取生效）</h3>
+        <p class="muted" style="margin-top:0">
+          目前我们先做“手动输入食材列表”。下一步 index.html 会支持：勾选/输入食材后，优先推荐包含相关标签的菜（你也可以后面扩展成 ingredients 字段）。
+        </p>
+
+        <div class="row">
+          <label>冰箱里有（逗号分隔）</label>
+          <input id="pantryInp" placeholder="例如：鸡蛋,番茄,土豆,豆腐" style="flex:1;min-width:220px" />
+        </div>
+
+        <div class="row">
+          <button id="savePantryBtn">保存食材到本设备</button>
+          <button id="clearPantryBtn" class="danger">清空食材</button>
+          <span class="pill" id="pantryPill">未保存</span>
         </div>
       </div>
     </div>
-    <p class="muted">追加会把菜插入到 textarea 的对应分类 items 数组里。完成后请点“导出 JSON”复制并回 GitHub 粘贴覆盖。</p>
+
+    <hr style="border:none;border-top:1px solid #eee;margin:14px 0;">
+
+    <h3 style="margin:0 0 8px 0">menu.json（可直接编辑）</h3>
+    <textarea id="ta" placeholder="点“加载当前 menu.json”后会显示内容"></textarea>
+
+    <p class="muted">
+      小技巧：你可以在这里直接改完 JSON，再点“校验 JSON”确认没问题。
+    </p>
   </div>
 
-  <script>
-    const $ = id=>document.getElementById(id);
-    $("loadBtn").onclick = async ()=>{
-      try{
-        const r = await fetch("./menu.json?v="+Date.now());
-        const txt = await r.text();
-        $("ta").value = txt;
-        alert("已加载 menu.json（请校验后导出并粘回 GitHub）");
-      }catch(e){ alert("加载失败，请确认 menu.json 在仓库根目录"); }
-    };
-    $("validateBtn").onclick = ()=>{
-      try{
-        JSON.parse($("ta").value);
-        alert("✅ JSON 校验通过");
-      }catch(e){ alert("❌ JSON 有语法错误： " + e.message); }
-    };
-    $("exportBtn").onclick = async ()=>{
-      try{
-        const obj = JSON.parse($("ta").value);
-        const pretty = JSON.stringify(obj,null,2);
-        await navigator.clipboard.writeText(pretty);
-        alert("已复制漂亮的 JSON 到剪贴板 → 请粘回 GitHub menu.json 并 Commit");
-      }catch(e){ alert("无法导出，JSON 语法错误：" + e.message); }
-    };
+<script>
+const $ = (id)=>document.getElementById(id);
+const MENU_KEY_PREFS = "family_menu_prefs_v1";
+const MENU_KEY_PANTRY = "family_menu_pantry_v1";
 
-    $("appendBtn").onclick = ()=>{
-      try{
-        const doc = JSON.parse($("ta").value || '{"categories":[]}');
-        const catid = $("formCat").value.trim();
-        if(!catid){ alert("请填写分类 ID"); return; }
-        const cat = (doc.categories || []).find(c=>c.id===catid);
-        if(!cat){ alert("找不到分类 ID，请先在 menu.json 中创建该分类并加载"); return; }
-        const name = $("formName").value.trim();
-        if(!name){ alert("请填写菜名"); return; }
-        const type = $("formType").value;
-        const tags = ($("formTags").value||"").split(",").map(s=>s.trim()).filter(Boolean);
-        const time = parseInt($("formTime").value||"0",10) || 0;
-        const difficulty = parseInt($("formDiff").value||"1",10) || 1;
-        const newItem = { name, type, tags, time, difficulty };
-        cat.items = cat.items || [];
-        cat.items.push(newItem);
-        $("ta").value = JSON.stringify(doc, null, 2);
-        alert("追加成功：记得点“导出 JSON”并粘回 GitHub 保存");
-        // 清空表单项
-        $("formName").value=""; $("formTags").value=""; $("formTime").value=""; $("formDiff").value="";
-      }catch(e){ alert("操作失败，请先加载并校验 menu.json：" + e.message); }
-    };
-  </script>
+let data = null;
+
+function setMsg(text, ok=true){
+  $("msg").className = ok ? "muted ok" : "muted bad";
+  $("msg").textContent = text;
+}
+
+function safeParseJSON(txt){
+  try { return { ok:true, value: JSON.parse(txt) }; }
+  catch(e){ return { ok:false, error: e }; }
+}
+
+function normalizeCSV(s){
+  return (s||"")
+    .split(",")
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
+
+function refreshCategorySelect(){
+  const sel = $("catSel");
+  sel.innerHTML = "";
+  if(!data?.categories?.length){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "（未加载/无分类）";
+    sel.appendChild(opt);
+    $("statPill").textContent = "未加载数据";
+    return;
+  }
+  data.categories.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = `${c.name}（${c.items?.length||0}）`;
+    sel.appendChild(opt);
+  });
+  const first = data.categories[0];
+  $("statPill").textContent = `已加载：${data.categories.length} 个分类`;
+  // 默认选中第一个
+  sel.value = first.id;
+}
+
+function syncTextarea(){
+  $("ta").value = JSON.stringify(data, null, 2);
+}
+
+async function loadMenu(){
+  const r = await fetch("./menu.json?v=" + Date.now());
+  const txt = await r.text();
+  $("ta").value = txt;
+  const parsed = safeParseJSON(txt);
+  if(!parsed.ok){
+    setMsg("❌ menu.json 不是合法 JSON：" + parsed.error.message, false);
+    data = null;
+    refreshCategorySelect();
+    return;
+  }
+  data = parsed.value;
+  // 结构兜底
+  if(!Array.isArray(data.categories)) data.categories = [];
+  data.categories.forEach(c=>{
+    if(!Array.isArray(c.items)) c.items = [];
+  });
+  refreshCategorySelect();
+  setMsg("✅ 已加载当前 menu.json（可以开始添菜了）");
+}
+
+$("loadBtn").onclick = loadMenu;
+
+$("validateBtn").onclick = ()=>{
+  const parsed = safeParseJSON($("ta").value);
+  if(!parsed.ok){
+    setMsg("❌ JSON 有问题：" + parsed.error.message, false);
+    return;
+  }
+  setMsg("✅ JSON 校验通过");
+  // 同步 data，并刷新分类列表
+  data = parsed.value;
+  if(!Array.isArray(data.categories)) data.categories = [];
+  data.categories.forEach(c=>{
+    if(!Array.isArray(c.items)) c.items = [];
+  });
+  refreshCategorySelect();
+};
+
+$("addDishBtn").onclick = ()=>{
+  if(!data){
+    setMsg("先点“加载当前 menu.json”", false);
+    return;
+  }
+  const catId = $("catSel").value;
+  const type = $("typeSel").value;
+  const name = ($("nameInp").value||"").trim();
+  if(!catId){
+    setMsg("没有可用分类：请先在 menu.json 里配置 categories", false);
+    return;
+  }
+  if(!name){
+    setMsg("菜名不能为空", false);
+    return;
+  }
+  const time = Number($("timeInp").value||0);
+  const difficulty = Number($("diffInp").value||0);
+  const tags = normalizeCSV($("tagsInp").value);
+
+  const cat = data.categories.find(c=>c.id===catId);
+  if(!cat){
+    setMsg("找不到分类（可能 JSON 结构有问题）", false);
+    return;
+  }
+
+  // 去重：同分类同名不重复
+  if(cat.items.some(x => (x.name||"").trim() === name)){
+    setMsg("这个分类里已经有同名菜了（避免重复）", false);
+    return;
+  }
+
+  const item = {
+    name,
+    type,
+    tags,
+    time: Number.isFinite(time) ? time : 0,
+    difficulty: Number.isFinite(difficulty) ? difficulty : 0
+  };
+  cat.items.push(item);
+
+  // 同步到 textarea
+  syncTextarea();
+  refreshCategorySelect();
+
+  // 清空输入
+  $("nameInp").value = "";
+  $("tagsInp").value = "";
+  setMsg(`✅ 已添加：${cat.name} / ${type} / ${item.name}（记得复制 JSON 粘贴回 GitHub 并 Commit）`);
+};
+
+$("copyBtn").onclick = async ()=>{
+  const parsed = safeParseJSON($("ta").value);
+  if(!parsed.ok){
+    setMsg("❌ 不能复制：JSON 不合法：" + parsed.error.message, false);
+    return;
+  }
+  const pretty = JSON.stringify(parsed.value, null, 2);
+  try{
+    await navigator.clipboard.writeText(pretty);
+    setMsg("✅ 已复制到剪贴板：去 GitHub 打开 menu.json → 粘贴覆盖 → Commit changes");
+  }catch(e){
+    setMsg("❌ 复制失败（浏览器权限限制），请手动全选文本框内容复制。", false);
+  }
+};
+
+$("downloadBtn").onclick = ()=>{
+  const parsed = safeParseJSON($("ta").value);
+  if(!parsed.ok){
+    setMsg("❌ 不能下载：JSON 不合法：" + parsed.error.message, false);
+    return;
+  }
+  const pretty = JSON.stringify(parsed.value, null, 2);
+  const blob = new Blob([pretty], {type:"application/json;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "menu.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setMsg("✅ 已下载 menu.json（仍需粘贴回 GitHub 才会让站点同步更新）");
+};
+
+// ---------- 偏好/食材：存到 localStorage，下一步 index.html 会读取 ----------
+function loadPrefsUI(){
+  const raw = localStorage.getItem(MENU_KEY_PREFS);
+  if(!raw){
+    $("prefsPill").textContent = "未保存";
+    return;
+  }
+  try{
+    const obj = JSON.parse(raw);
+    $("membersInp").value = (obj.members||[]).join(",");
+    $("avoidTagsInp").value = (obj.avoid_tags||[]).join(",");
+    $("loveTagsInp").value = (obj.love_tags||[]).join(",");
+    $("prefsPill").textContent = "已从本设备载入";
+  }catch{
+    $("prefsPill").textContent = "读取失败";
+  }
+}
+
+$("savePrefsBtn").onclick = ()=>{
+  const obj = {
+    members: normalizeCSV($("membersInp").value),
+    avoid_tags: normalizeCSV($("avoidTagsInp").value),
+    love_tags: normalizeCSV($("loveTagsInp").value)
+  };
+  localStorage.setItem(MENU_KEY_PREFS, JSON.stringify(obj));
+  $("prefsPill").textContent = "✅ 已保存";
+  setMsg("✅ 偏好已保存到本设备（下一步 index 会读取并生效）");
+};
+
+$("clearPrefsBtn").onclick = ()=>{
+  localStorage.removeItem(MENU_KEY_PREFS);
+  $("membersInp").value = "";
+  $("avoidTagsInp").value = "";
+  $("loveTagsInp").value = "";
+  $("prefsPill").textContent = "已清空";
+  setMsg("✅ 已清空偏好（本设备）");
+};
+
+function loadPantryUI(){
+  const raw = localStorage.getItem(MENU_KEY_PANTRY);
+  if(!raw){
+    $("pantryPill").textContent = "未保存";
+    return;
+  }
+  try{
+    const obj = JSON.parse(raw);
+    $("pantryInp").value = (obj.items||[]).join(",");
+    $("pantryPill").textContent = "已从本设备载入";
+  }catch{
+    $("pantryPill").textContent = "读取失败";
+  }
+}
+
+$("savePantryBtn").onclick = ()=>{
+  const obj = { items: normalizeCSV($("pantryInp").value) };
+  localStorage.setItem(MENU_KEY_PANTRY, JSON.stringify(obj));
+  $("pantryPill").textContent = "✅ 已保存";
+  setMsg("✅ 食材已保存到本设备（下一步 index 会读取并生效）");
+};
+
+$("clearPantryBtn").onclick = ()=>{
+  localStorage.removeItem(MENU_KEY_PANTRY);
+  $("pantryInp").value = "";
+  $("pantryPill").textContent = "已清空";
+  setMsg("✅ 已清空食材（本设备）");
+};
+
+// 初始载入偏好/食材 UI
+loadPrefsUI();
+loadPantryUI();
+</script>
 </body>
 </html>
