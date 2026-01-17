@@ -1,60 +1,115 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>菜单后台</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>菜单后台 — 家庭菜单</title>
   <style>
-    body{font-family:system-ui;max-width:900px;margin:24px auto;padding:0 14px;}
-    textarea{width:100%;min-height:380px;border:1px solid #ddd;border-radius:12px;padding:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
-    button{padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer;margin-right:8px}
+    body{font-family:system-ui;max-width:1000px;margin:20px auto;padding:12px;}
+    .card{border:1px solid #eee;border-radius:10px;padding:12px;margin-bottom:12px}
+    textarea{width:100%;min-height:360px;border:1px solid #ddd;border-radius:8px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace}
+    input,select{padding:8px;border-radius:8px;border:1px solid #ddd;width:100%}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;background:#fafafa;cursor:pointer}
+    label{font-size:13px}
     .muted{color:#666;font-size:13px}
   </style>
 </head>
 <body>
-  <h1>🧰 菜单后台</h1>
-  <p class="muted">改完后点“导出 JSON”，把内容复制回 GitHub 的 menu.json 文件即可。</p>
-
-  <div>
-    <button id="loadBtn">加载当前 menu.json</button>
-    <button id="validateBtn">校验 JSON</button>
-    <button id="exportBtn">导出 JSON（复制用）</button>
-    <a href="./index.html">← 返回抽菜单</a>
+  <h1>🧰 菜单后台（编辑 & 表单加菜）</h1>
+  <div class="card">
+    <div class="row">
+      <button id="loadBtn">加载当前 menu.json</button>
+      <button id="validateBtn">校验 JSON</button>
+      <button id="exportBtn">导出 JSON（复制到剪贴板）</button>
+      <a href="./index.html" style="margin-left:auto">← 返回前端</a>
+    </div>
+    <p class="muted">说明：修改完成后，把复制的 JSON 粘贴回 GitHub 的 menu.json 并 Commit，Cloudflare Pages 会自动生效。</p>
   </div>
 
-  <p class="muted" id="msg"></p>
-  <textarea id="ta" placeholder="这里会显示 menu.json 内容"></textarea>
+  <div class="card">
+    <label>menu.json 内容（编辑后请校验）</label>
+    <textarea id="ta" placeholder="加载后显示"></textarea>
+  </div>
 
-<script>
-const $ = (id)=>document.getElementById(id);
-function setMsg(t){ $("msg").textContent = t; }
+  <div class="card">
+    <h3>快速表单：追加单条菜到指定分类（安全，避免 JSON 语法错）</h3>
+    <div class="row">
+      <div style="flex:1">
+        <label>分类 ID（例如：meat / veg / soup / staple）</label>
+        <input id="formCat" placeholder="例如：meat" />
+        <label style="margin-top:8px">菜名</label>
+        <input id="formName" placeholder="例如：鱼香肉丝" />
+        <label style="margin-top:8px">类型（荤/素/汤/主食）</label>
+        <select id="formType">
+          <option value="荤">荤</option>
+          <option value="素">素</option>
+          <option value="汤">汤</option>
+          <option value="主食">主食</option>
+        </select>
+      </div>
+      <div style="width:260px">
+        <label>标签（逗号分隔）</label>
+        <input id="formTags" placeholder="例如：下饭,快手" />
+        <label style="margin-top:8px">预计用时（分钟）</label>
+        <input id="formTime" placeholder="例如：25" />
+        <label style="margin-top:8px">难度（1-4）</label>
+        <input id="formDiff" placeholder="例如：2" />
+        <div style="margin-top:8px">
+          <button id="appendBtn">➕ 追加到 menu.json 文本框</button>
+        </div>
+      </div>
+    </div>
+    <p class="muted">追加会把菜插入到 textarea 的对应分类 items 数组里。完成后请点“导出 JSON”复制并回 GitHub 粘贴覆盖。</p>
+  </div>
 
-$("loadBtn").onclick = async ()=>{
-  const r = await fetch("./menu.json?v=" + Date.now());
-  const txt = await r.text();
-  $("ta").value = txt;
-  setMsg("已加载当前 menu.json");
-};
+  <script>
+    const $ = id=>document.getElementById(id);
+    $("loadBtn").onclick = async ()=>{
+      try{
+        const r = await fetch("./menu.json?v="+Date.now());
+        const txt = await r.text();
+        $("ta").value = txt;
+        alert("已加载 menu.json（请校验后导出并粘回 GitHub）");
+      }catch(e){ alert("加载失败，请确认 menu.json 在仓库根目录"); }
+    };
+    $("validateBtn").onclick = ()=>{
+      try{
+        JSON.parse($("ta").value);
+        alert("✅ JSON 校验通过");
+      }catch(e){ alert("❌ JSON 有语法错误： " + e.message); }
+    };
+    $("exportBtn").onclick = async ()=>{
+      try{
+        const obj = JSON.parse($("ta").value);
+        const pretty = JSON.stringify(obj,null,2);
+        await navigator.clipboard.writeText(pretty);
+        alert("已复制漂亮的 JSON 到剪贴板 → 请粘回 GitHub menu.json 并 Commit");
+      }catch(e){ alert("无法导出，JSON 语法错误：" + e.message); }
+    };
 
-$("validateBtn").onclick = ()=>{
-  try{
-    JSON.parse($("ta").value);
-    setMsg("✅ JSON 正常");
-  }catch(e){
-    setMsg("❌ JSON 有问题： " + e.message);
-  }
-};
-
-$("exportBtn").onclick = async ()=>{
-  try{
-    const obj = JSON.parse($("ta").value);
-    const pretty = JSON.stringify(obj, null, 2);
-    await navigator.clipboard.writeText(pretty);
-    setMsg("✅ 已复制到剪贴板：去 GitHub 打开 menu.json 粘贴覆盖并提交即可");
-  }catch(e){
-    setMsg("❌ 无法导出： " + e.message);
-  }
-};
-</script>
+    $("appendBtn").onclick = ()=>{
+      try{
+        const doc = JSON.parse($("ta").value || '{"categories":[]}');
+        const catid = $("formCat").value.trim();
+        if(!catid){ alert("请填写分类 ID"); return; }
+        const cat = (doc.categories || []).find(c=>c.id===catid);
+        if(!cat){ alert("找不到分类 ID，请先在 menu.json 中创建该分类并加载"); return; }
+        const name = $("formName").value.trim();
+        if(!name){ alert("请填写菜名"); return; }
+        const type = $("formType").value;
+        const tags = ($("formTags").value||"").split(",").map(s=>s.trim()).filter(Boolean);
+        const time = parseInt($("formTime").value||"0",10) || 0;
+        const difficulty = parseInt($("formDiff").value||"1",10) || 1;
+        const newItem = { name, type, tags, time, difficulty };
+        cat.items = cat.items || [];
+        cat.items.push(newItem);
+        $("ta").value = JSON.stringify(doc, null, 2);
+        alert("追加成功：记得点“导出 JSON”并粘回 GitHub 保存");
+        // 清空表单项
+        $("formName").value=""; $("formTags").value=""; $("formTime").value=""; $("formDiff").value="";
+      }catch(e){ alert("操作失败，请先加载并校验 menu.json：" + e.message); }
+    };
+  </script>
 </body>
 </html>
