@@ -1,0 +1,28 @@
+{
+  "categories": [
+    {
+      "id": "home",
+      "name": "家常菜",
+      "items": [
+        { "name": "番茄炒蛋", "tags": ["快手", "不辣"], "time": 10, "difficulty": 1 },
+        { "name": "红烧鸡翅", "tags": ["下饭"], "time": 40, "difficulty": 2 }
+      ]
+    },
+    {
+      "id": "fast",
+      "name": "快手菜",
+      "items": [
+        { "name": "葱油拌面", "tags": ["10分钟"], "time": 10, "difficulty": 1 },
+        { "name": "空气炸锅鸡腿", "tags": ["空气炸锅"], "time": 25, "difficulty": 1 }
+      ]
+    },
+    {
+      "id": "takeout",
+      "name": "不想做饭（外卖）",
+      "items": [
+        { "name": "麻辣烫", "tags": ["重口"], "time": 0, "difficulty": 0 },
+        { "name": "日料盖饭", "tags": ["清爽"], "time": 0, "difficulty": 0 }
+      ]
+    }
+  ]
+}
