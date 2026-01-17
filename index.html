@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>今天吃什么</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:760px;margin:24px auto;padding:0 14px;}
+    .card{border:1px solid #e6e6e6;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 8px 18px rgba(0,0,0,.04)}
+    button{padding:10px 14px;border-radius:12px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    button:hover{border-color:#bbb}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .tag{display:inline-block;border:1px solid #eee;border-radius:999px;padding:3px 10px;margin:4px 6px 0 0;font-size:12px;color:#555}
+    .muted{color:#666;font-size:13px}
+    .big{font-size:22px;font-weight:700}
+    .shake{animation:shake .25s linear 2}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)}}
+  </style>
+</head>
+<body>
+  <h1>🍽️ 今天吃什么</h1>
+  <p class="muted">不纠结。让命运来。建议最多重选 3 次 😏</p>
+
+  <div class="card">
+    <div class="row" id="catButtons"></div>
+    <hr style="border:none;border-top:1px solid #eee;margin:14px 0;">
+    <div class="row">
+      <button id="rollBtn">🎡 命运之轮</button>
+      <button id="rerollBtn" disabled>不服再来一次</button>
+      <button id="resetBtn">重置重选次数</button>
+      <a href="./admin.html" style="margin-left:auto;align-self:center">后台加菜 →</a>
+    </div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <div class="muted" id="resultMeta"></div>
+    <div class="big" id="resultName"></div>
+    <div id="resultTags"></div>
+  </div>
+
+<script>
+let data, currentCatId = null;
+let rerollCount = 0;
+const MAX_REROLL = 3;
+
+const $ = (id)=>document.getElementById(id);
+const storeKey = "family_menu_recent"; // 用于“避免重复”的简单历史
+
+async function loadData(){
+  const r = await fetch("./menu.json?v=" + Date.now());
+  data = await r.json();
+  renderCats();
+}
+
+function renderCats(){
+  const box = $("catButtons");
+  box.innerHTML = "";
+  data.categories.forEach(c=>{
+    const btn = document.createElement("button");
+    btn.textContent = c.name;
+    btn.onclick = ()=>{
+      currentCatId = c.id;
+      [...box.children].forEach(b=>b.style.borderColor="#ddd");
+      btn.style.borderColor = "#000";
+    };
+    box.appendChild(btn);
+  });
+}
+
+function getRecent(){
+  try { return JSON.parse(localStorage.getItem(storeKey) || "[]"); } catch { return []; }
+}
+function pushRecent(name){
+  const recent = getRecent();
+  recent.unshift({name, t: Date.now()});
+  const trimmed = recent.slice(0, 20); // 只留最近20条
+  localStorage.setItem(storeKey, JSON.stringify(trimmed));
+}
+
+function pickOne(items){
+  // 简单“避免重复”：最近5次出现过的，降低权重（这里直接过滤更狠一点）
+  const recentNames = getRecent().slice(0,5).map(x=>x.name);
+  const filtered = items.filter(x=>!recentNames.includes(x.name));
+  const pool = filtered.length ? filtered : items;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function showResult(item, catName){
+  $("resultCard").style.display = "block";
+  $("resultMeta").textContent = `分类：${catName}｜重选：${rerollCount} 次`;
+  $("resultName").textContent = item.name;
+  $("resultTags").innerHTML = (item.tags||[]).map(t=>`<span class="tag">${t}</span>`).join("");
+  $("resultCard").classList.remove("shake");
+  void $("resultCard").offsetWidth; // reflow
+  $("resultCard").classList.add("shake");
+  pushRecent(item.name);
+}
+
+function roll(){
+  if(!currentCatId){
+    alert("先选个分类～");
+    return;
+  }
+  const cat = data.categories.find(c=>c.id===currentCatId);
+  if(!cat || !cat.items?.length){
+    alert("这个分类还没菜，去后台加点吧～");
+    return;
+  }
+  const item = pickOne(cat.items);
+  showResult(item, cat.name);
+
+  $("rerollBtn").disabled = false;
+}
+
+$("rollBtn").onclick = ()=>{
+  rerollCount = 0;
+  roll();
+};
+
+$("rerollBtn").onclick = ()=>{
+  rerollCount++;
+  if(rerollCount > MAX_REROLL){
+    alert("你不是不想吃，你只是饿了。收手吧 😤");
+    rerollCount = MAX_REROLL;
+    return;
+  }
+  roll();
+};
+
+$("resetBtn").onclick = ()=>{
+  rerollCount = 0;
+  alert("重选次数已清零～");
+};
+
+loadData();
+</script>
+</body>
+</html>
