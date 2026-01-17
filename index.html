@@ -3,515 +3,224 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🍽️ 家庭随机菜单</title>
+  <title>🍽️ 今天吃什么</title>
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;max-width:980px;margin:24px auto;padding:0 14px;line-height:1.4}
-    h1{margin:6px 0 10px 0}
+    h1{margin:6px 0 10px}
     .muted{color:#666;font-size:13px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     button{padding:10px 14px;border-radius:14px;border:1px solid #ddd;background:#fff;cursor:pointer}
-    button:hover{border-color:#bbb}
-    button.primary{border-color:#111;background:#111;color:#fff}
-    button[disabled]{opacity:.45;cursor:not-allowed}
-    .chips{display:flex;flex-wrap:wrap;gap:8px}
-    .chip{padding:8px 12px;border-radius:999px;border:1px solid #e6e6e6;background:#fafafa;cursor:pointer}
-    .chip.active{border-color:#111;background:#111;color:#fff}
+    button.primary{background:#111;color:#fff;border-color:#111}
+    button:hover{border-color:#999}
+    button[disabled]{opacity:.45}
+    input{border:1px solid #ddd;border-radius:12px;padding:10px 12px;font-size:14px}
     .card{border:1px solid #e6e6e6;border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 10px 22px rgba(0,0,0,.04)}
-    .tag{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;color:#555;background:#fafafa;margin-right:6px;margin-top:6px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{padding:8px 12px;border-radius:999px;border:1px solid #e6e6e6;cursor:pointer}
+    .chip.active{background:#111;color:#fff;border-color:#111}
+    .tag{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;margin-right:6px;margin-top:6px}
     .big{font-size:22px;font-weight:700}
-    .shake{animation:shake .38s}
-    @keyframes shake{
-      0%{transform:translateX(0)}
-      25%{transform:translateX(-6px)}
-      50%{transform:translateX(6px)}
-      75%{transform:translateX(-4px)}
-      100%{transform:translateX(0)}
-    }
-    .split{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
-    @media (max-width:860px){.split{grid-template-columns:1fr}}
-    .list{margin:8px 0 0 18px}
-    .pill{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;color:#555;background:#fafafa}
+    .shake{animation:shake .35s}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}100%{transform:translateX(0)}}
+    ul{margin:8px 0 0 18px}
+    .pill{display:inline-block;border:1px solid #eee;border-radius:999px;padding:4px 10px;font-size:12px;background:#fafafa}
     .danger{color:#b00020}
   </style>
 </head>
 <body>
-  <div class="row" style="justify-content:space-between">
-    <h1>🍽️ 今天吃什么</h1>
-    <a href="./admin.html">后台加菜 →</a>
+
+<div class="row" style="justify-content:space-between">
+  <h1>🍽️ 今天吃什么</h1>
+  <a href="./admin.html">后台加菜 →</a>
+</div>
+
+<p class="muted" id="status">加载中…</p>
+
+<!-- 分类选择 -->
+<div class="card">
+  <h3>选择分类</h3>
+  <div class="chips" id="cats"></div>
+</div>
+
+<!-- 可用食材（网页端） -->
+<div class="card">
+  <h3>🥬 可用食材（影响推荐）</h3>
+  <p class="muted">输入你现在能用的食材，匹配的菜会更容易被选中</p>
+  <div class="row">
+    <input id="pantryInput" placeholder="如：鸡蛋,番茄,土豆,豆腐" style="flex:1;min-width:240px">
+    <button id="savePantryBtn">保存</button>
+    <button id="clearPantryBtn">清空</button>
+    <span class="pill" id="pantryHint">未设置</span>
+  </div>
+</div>
+
+<!-- 抽菜单 -->
+<div class="card">
+  <div class="row">
+    <button class="primary" id="rollBtn">🎡 单菜</button>
+    <button id="mealBtn">🍱 一荤一素一汤</button>
+    <button id="rerollBtn" disabled>不服再来一次</button>
+    <button id="resetBtn">重置</button>
   </div>
 
-  <p class="muted" id="status">正在加载菜单库…</p>
-
-  <div class="card">
-    <h3 style="margin:0 0 10px 0">选择分类</h3>
-    <div class="chips" id="cats"></div>
-    <p class="muted" style="margin:10px 0 0 0">
-      提示：如果你已经按“荤菜 / 素菜 / 汤 / 主食”分好类，那么“一荤一素一汤”会自动从对应分类各抽一份。
-    </p>
-  </div>
-
-  <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <div class="row">
-        <button id="rollBtn" class="primary">🎡 命运之轮（单菜）</button>
-        <button id="mealBtn">🍱 一荤一素一汤</button>
-        <button id="rerollBtn" disabled>不服再来一次</button>
-        <button id="resetBtn">重置重选次数</button>
-      </div>
-      <div class="row">
-        <span class="pill" id="prefsHint">偏好：未设置</span>
-        <span class="pill" id="pantryHint">食材：未设置</span>
-      </div>
-    </div>
-
-    <div id="resultCard" class="card" style="display:none;margin-top:14px">
-      <div class="muted" id="resultMeta"></div>
-      <div class="big" id="resultName" style="margin:8px 0 6px 0"></div>
-      <div id="resultTags"></div>
-
-      <div class="row" style="margin-top:12px">
-        <button id="confirmBtn" class="primary">✅ 就吃它（记入最近吃过）</button>
-        <button id="cancelBtn">先不记（只是看看）</button>
-        <span class="muted" id="confirmHint"></span>
-      </div>
+  <div id="resultCard" class="card" style="display:none;margin-top:14px">
+    <div class="muted" id="resultMeta"></div>
+    <div class="big" id="resultName"></div>
+    <div id="resultTags"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="confirmBtn">✅ 就吃它</button>
+      <button id="cancelBtn">只是看看</button>
+      <span class="muted" id="confirmHint"></span>
     </div>
   </div>
+</div>
 
-  <div class="split">
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">最近吃过（仅在你点“✅ 就吃它”后记录）</h3>
-      <p class="muted" style="margin-top:0">
-        默认会尽量避开<strong>最近 7 天</strong>已经确认吃过的菜。
-      </p>
-      <ul class="list" id="recentList"></ul>
-      <div class="row" style="margin-top:10px">
-        <button id="clearRecentBtn" class="danger">清空最近吃过（本设备）</button>
-        <span class="muted">只清当前设备浏览器，不影响 GitHub 菜单库</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px 0">小提示</h3>
-      <ul class="list">
-        <li>成员偏好/食材在 <code>admin.html</code> 保存到本设备（localStorage），同一台设备会生效。</li>
-        <li>如果你希望全家设备都同步偏好/食材：后面可以升级到 Firebase（真后台）。</li>
-      </ul>
-    </div>
-  </div>
+<!-- 最近吃过 -->
+<div class="card">
+  <h3>最近吃过（确认后才记录）</h3>
+  <ul id="recentList"></ul>
+  <button class="danger" id="clearRecentBtn">清空记录</button>
+</div>
 
 <script>
-const $ = (id)=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-const KEY_PREFS  = "family_menu_prefs_v1";
 const KEY_PANTRY = "family_menu_pantry_v1";
-const KEY_RECENT = "family_menu_recent_v2"; // v2: [{name, date}]
+const KEY_PREFS  = "family_menu_prefs_v1";
+const KEY_RECENT = "family_menu_recent_v2";
 
-const AVOID_DAYS = 7; // 默认避开最近7天确认吃过的
+let data=null, currentCatId=null, rerollCount=0, pending=null;
 
-let data = null;
-let currentCatId = null;
-let rerollCount = 0;
+/* ---------- 本地数据 ---------- */
+const loadPantry = ()=>{ try{ return JSON.parse(localStorage.getItem(KEY_PANTRY))||{items:[]} }catch{return{items:[]}} };
+const savePantry = arr => localStorage.setItem(KEY_PANTRY, JSON.stringify({items:arr}));
+const loadPrefs = ()=>{ try{ return JSON.parse(localStorage.getItem(KEY_PREFS))||{} }catch{return{}} };
+const loadRecent = ()=>{ try{ return JSON.parse(localStorage.getItem(KEY_RECENT))||[] }catch{return[]} };
+const saveRecent = arr => localStorage.setItem(KEY_RECENT, JSON.stringify(arr));
 
-// 当前“待确认”的候选（单菜或套餐）
-let pending = null; // { mode:"single"|"meal", items:[{name,...}], metaText, tagHTML }
-
-function normalizeCSVtoArray(s){
-  return (s||"").split(",").map(x=>x.trim()).filter(Boolean);
+/* ---------- 初始化可用食材 UI ---------- */
+function initPantryUI(){
+  const p = loadPantry().items||[];
+  $("pantryInput").value = p.join(",");
+  $("pantryHint").textContent = p.length ? "已设置" : "未设置";
 }
+$("savePantryBtn").onclick = ()=>{
+  const items = $("pantryInput").value.split(",").map(x=>x.trim()).filter(Boolean);
+  savePantry(items);
+  $("pantryHint").textContent = items.length ? "已保存" : "未设置";
+};
+$("clearPantryBtn").onclick = ()=>{
+  savePantry([]);
+  $("pantryInput").value="";
+  $("pantryHint").textContent="已清空";
+};
 
-function loadPrefs(){
-  try{
-    const raw = localStorage.getItem(KEY_PREFS);
-    if(!raw) return { members:[], avoid_tags:[], love_tags:[] };
-    const o = JSON.parse(raw);
-    return {
-      members: Array.isArray(o.members)?o.members:[],
-      avoid_tags: Array.isArray(o.avoid_tags)?o.avoid_tags:[],
-      love_tags: Array.isArray(o.love_tags)?o.love_tags:[]
-    };
-  }catch{
-    return { members:[], avoid_tags:[], love_tags:[] };
-  }
-}
-
-function loadPantry(){
-  try{
-    const raw = localStorage.getItem(KEY_PANTRY);
-    if(!raw) return { items:[] };
-    const o = JSON.parse(raw);
-    return { items: Array.isArray(o.items)?o.items:[] };
-  }catch{
-    return { items:[] };
-  }
-}
-
-function loadRecent(){
-  try{
-    const raw = localStorage.getItem(KEY_RECENT);
-    if(!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr)?arr:[];
-  }catch{
-    return [];
-  }
-}
-
-function saveRecent(arr){
-  localStorage.setItem(KEY_RECENT, JSON.stringify(arr));
-}
-
-function todayISO(){
-  const d = new Date();
-  return d.toISOString();
-}
-
-function withinDays(iso, days){
-  const t = new Date(iso).getTime();
-  if(Number.isNaN(t)) return false;
-  const now = Date.now();
-  return (now - t) <= days*24*60*60*1000;
-}
-
-function recentNamesSet(days=AVOID_DAYS){
-  const rec = loadRecent().filter(x => x?.name && x?.date && withinDays(x.date, days));
-  return new Set(rec.map(x=>x.name));
-}
-
-function renderRecent(){
-  const ul = $("recentList");
-  ul.innerHTML = "";
-  const rec = loadRecent()
-    .filter(x=>x?.name && x?.date)
-    .sort((a,b)=> new Date(b.date) - new Date(a.date))
-    .slice(0, 30);
-
-  if(!rec.length){
-    const li = document.createElement("li");
-    li.textContent = "（还没有确认吃过的记录）";
-    ul.appendChild(li);
-    return;
-  }
-
-  rec.forEach(x=>{
-    const li = document.createElement("li");
-    const d = new Date(x.date);
-    const ds = Number.isNaN(d.getTime()) ? "" : `（${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}）`;
-    li.textContent = `${x.name} ${ds}`;
-    ul.appendChild(li);
-  });
-}
-
-function updateHints(){
+/* ---------- 随机逻辑 ---------- */
+function weightedPick(items){
   const prefs = loadPrefs();
-  const pantry = loadPantry();
+  const pantry = loadPantry().items||[];
+  const recentSet = new Set(loadRecent().map(x=>x.name));
 
-  const p1 = prefs.avoid_tags?.length ? `避雷：${prefs.avoid_tags.slice(0,3).join("、")}${prefs.avoid_tags.length>3?"…":""}` : "偏好：未设置";
-  const p2 = pantry.items?.length ? `食材：${pantry.items.slice(0,3).join("、")}${pantry.items.length>3?"…":""}` : "食材：未设置";
-
-  $("prefsHint").textContent = p1;
-  $("pantryHint").textContent = p2;
-}
-
-function tagHTML(tags){
-  return (tags||[]).map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join("");
-}
-
-function escapeHTML(s){
-  return String(s).replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[m]));
-}
-
-// 权重：偏爱标签 + 食材匹配加权；避雷标签直接过滤
-function scoreItem(item, prefs, pantry){
-  let score = 1;
-
-  const tags = Array.isArray(item.tags) ? item.tags : [];
-  const name = (item.name||"");
-
-  // 偏爱加权
-  for(const t of (prefs.love_tags||[])){
-    if(tags.includes(t)) score += 3;
-  }
-
-  // 食材加权：食材出现在菜名 或 tags 里（你也可以后续把食材写进 tags）
-  for(const ing of (pantry.items||[])){
-    if(!ing) continue;
-    if(name.includes(ing)) score += 2;
-    if(tags.includes(ing)) score += 2;
-  }
-
-  // 快手/清淡等常用标签轻微加权（让体验更“家用”）
-  if(tags.includes("快手")) score += 0.5;
-
-  return score;
-}
-
-function passesAvoid(item, prefs){
-  const avoid = prefs.avoid_tags || [];
-  if(!avoid.length) return true;
-  const tags = Array.isArray(item.tags) ? item.tags : [];
-  for(const t of avoid){
-    if(tags.includes(t)) return false;
-  }
-  return true;
-}
-
-function weightedPick(items, prefs, pantry, avoidRecentSet){
-  // 先过滤避雷
-  let pool = items.filter(it => passesAvoid(it, prefs));
-
-  // 尽量避开最近吃过
-  let poolNoRecent = pool.filter(it => !avoidRecentSet.has(it.name));
-  if(poolNoRecent.length) pool = poolNoRecent; // 有可用就用“避开最近”的版本
+  const pool = items.filter(it=>{
+    if((prefs.avoid_tags||[]).some(t=>it.tags?.includes(t))) return false;
+    if(recentSet.has(it.name)) return false;
+    return true;
+  });
 
   if(!pool.length) return null;
 
-  // 权重随机
-  const weights = pool.map(it => scoreItem(it, prefs, pantry));
-  const total = weights.reduce((a,b)=>a+b,0);
-  let r = Math.random() * total;
-  for(let i=0;i<pool.length;i++){
-    r -= weights[i];
-    if(r <= 0) return pool[i];
-  }
+  const weights = pool.map(it=>{
+    let w = 1;
+    (prefs.love_tags||[]).forEach(t=>{ if(it.tags?.includes(t)) w+=3; });
+    pantry.forEach(f=>{
+      if(it.name.includes(f) || it.tags?.includes(f)) w+=2;
+    });
+    return w;
+  });
+
+  let r = Math.random()*weights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<pool.length;i++){ if((r-=weights[i])<=0) return pool[i]; }
   return pool[pool.length-1];
 }
 
-function findCategoryByNameOrId(idOrName){
-  if(!data?.categories?.length) return null;
-  return data.categories.find(c => c.id===idOrName || c.name===idOrName) || null;
+/* ---------- 渲染 ---------- */
+function showResult(meta,name,tags){
+  $("resultCard").style.display="block";
+  $("resultMeta").textContent=meta;
+  $("resultName").textContent=name;
+  $("resultTags").innerHTML=(tags||[]).map(t=>`<span class="tag">${t}</span>`).join("");
+  $("resultCard").classList.remove("shake"); void $("resultCard").offsetWidth; $("resultCard").classList.add("shake");
 }
 
-function renderCategories(){
-  const wrap = $("cats");
-  wrap.innerHTML = "";
-  if(!data?.categories?.length){
-    wrap.textContent = "（菜单库里没有 categories，请检查 menu.json）";
-    return;
-  }
-
-  data.categories.forEach(c=>{
-    const b = document.createElement("div");
-    b.className = "chip";
-    b.textContent = `${c.name}`;
-    b.onclick = ()=>{
-      currentCatId = c.id;
-      [...wrap.children].forEach(x=>x.classList.remove("active"));
-      b.classList.add("active");
-      rerollCount = 0;
-      $("rerollBtn").disabled = true;
-      hideResult();
-    };
-    wrap.appendChild(b);
-  });
-
-  // 默认选第一个
-  currentCatId = data.categories[0].id;
-  wrap.children[0].classList.add("active");
-}
-
-function showResultCard(metaText, titleText, tags){
-  $("resultCard").style.display = "block";
-  $("resultMeta").textContent = metaText;
-  $("resultName").textContent = titleText;
-  $("resultTags").innerHTML = tagHTML(tags);
-
-  $("resultCard").classList.remove("shake");
-  void $("resultCard").offsetWidth;
-  $("resultCard").classList.add("shake");
-}
-
-function hideResult(){
-  $("resultCard").style.display = "none";
-  pending = null;
-  $("confirmHint").textContent = "";
-}
-
+/* ---------- 单菜 ---------- */
 function rollSingle(){
-  if(!currentCatId){
-    alert("先选个分类～");
-    return;
-  }
   const cat = data.categories.find(c=>c.id===currentCatId);
-  const items = cat?.items || [];
-  if(!items.length){
-    alert("这个分类还没菜，去后台加点吧～");
-    return;
-  }
-
-  const prefs = loadPrefs();
-  const pantry = loadPantry();
-  const avoidRecentSet = recentNamesSet(AVOID_DAYS);
-
-  const pick = weightedPick(items, prefs, pantry, avoidRecentSet);
-  if(!pick){
-    alert("筛选后没有可选菜（可能避雷标签太多）。去后台把“全家避雷标签”改少一点试试。");
-    return;
-  }
-
-  const meta = `模式：单菜｜分类：${cat.name}｜重选：${rerollCount} 次`;
-  showResultCard(meta, pick.name, pick.tags||[]);
-
-  pending = {
-    mode: "single",
-    items: [pick],
-    metaText: meta
-  };
-
-  $("rerollBtn").disabled = false;
-  $("confirmHint").textContent = "点 ✅ 才会记入“最近吃过”";
+  const pick = weightedPick(cat.items);
+  if(!pick){ alert("没有可选菜了"); return; }
+  pending=[pick];
+  showResult(`单菜｜${cat.name}`, pick.name, pick.tags);
+  $("rerollBtn").disabled=false;
 }
 
+/* ---------- 套餐 ---------- */
 function rollMeal(){
-  const prefs = loadPrefs();
-  const pantry = loadPantry();
-  const avoidRecentSet = recentNamesSet(AVOID_DAYS);
-
-  // 优先：如果存在“荤菜/素菜/汤”三个分类，就从三个分类各抽一份
-  const catMeat = findCategoryByNameOrId("meat") || findCategoryByNameOrId("荤菜");
-  const catVeg  = findCategoryByNameOrId("veg")  || findCategoryByNameOrId("素菜");
-  const catSoup = findCategoryByNameOrId("soup") || findCategoryByNameOrId("汤");
-
-  let meat = null, veg = null, soup = null;
-  let metaCatText = "";
-
-  if(catMeat?.items?.length && catVeg?.items?.length && catSoup?.items?.length){
-    meat = weightedPick(catMeat.items, prefs, pantry, avoidRecentSet);
-    veg  = weightedPick(catVeg.items,  prefs, pantry, avoidRecentSet);
-    soup = weightedPick(catSoup.items, prefs, pantry, avoidRecentSet);
-    metaCatText = `来源：${catMeat.name} + ${catVeg.name} + ${catSoup.name}`;
-  }else{
-    // 兜底：从当前分类里按 type=荤/素/汤 过滤抽
-    if(!currentCatId){
-      alert("先选个分类～");
-      return;
-    }
-    const cat = data.categories.find(c=>c.id===currentCatId);
-    const items = cat?.items || [];
-    if(!items.length){
-      alert("这个分类还没菜，去后台加点吧～");
-      return;
-    }
-    const byType = (t)=> items.filter(x => (x.type||"")===t);
-    if(!byType("荤").length || !byType("素").length || !byType("汤").length){
-      alert("套餐模式需要：要么菜单里有分类『荤菜/素菜/汤』；要么当前分类里有 type=荤/素/汤 三种。");
-      return;
-    }
-    meat = weightedPick(byType("荤"), prefs, pantry, avoidRecentSet);
-    veg  = weightedPick(byType("素"), prefs, pantry, avoidRecentSet);
-    soup = weightedPick(byType("汤"), prefs, pantry, avoidRecentSet);
-    metaCatText = `来源：当前分类 ${cat.name}（按 type 分组）`;
-  }
-
-  if(!meat || !veg || !soup){
-    alert("套餐抽取失败：可能被避雷/最近吃过过滤完了。你可以先重置避雷/清空最近记录再试。");
-    return;
-  }
-
-  const title = `荤：${meat.name}  ·  素：${veg.name}  ·  汤：${soup.name}`;
-  const tags = [...new Set([...(meat.tags||[]), ...(veg.tags||[]), ...(soup.tags||[])])];
-
-  const meta = `模式：一荤一素一汤｜${metaCatText}｜重选：${rerollCount} 次`;
-  showResultCard(meta, title, tags);
-
-  pending = {
-    mode: "meal",
-    items: [meat, veg, soup],
-    metaText: meta
-  };
-
-  $("rerollBtn").disabled = false;
-  $("confirmHint").textContent = "点 ✅ 才会把三道菜都记入“最近吃过”";
+  const m=data.categories.find(c=>c.id==="meat")||{};
+  const v=data.categories.find(c=>c.id==="veg")||{};
+  const s=data.categories.find(c=>c.id==="soup")||{};
+  if(!m.items||!v.items||!s.items){ alert("需要荤/素/汤分类"); return; }
+  const a=weightedPick(m.items), b=weightedPick(v.items), c=weightedPick(s.items);
+  if(!a||!b||!c){ alert("套餐抽取失败"); return; }
+  pending=[a,b,c];
+  showResult("一荤一素一汤", `荤：${a.name} · 素：${b.name} · 汤：${c.name}`, [...new Set([...a.tags,...b.tags,...c.tags])]);
+  $("rerollBtn").disabled=false;
 }
 
-function confirmPending(){
-  if(!pending?.items?.length){
-    alert("还没有待确认的菜单～");
-    return;
-  }
-  const rec = loadRecent();
-
-  // 记录：同一天重复确认同名菜允许，但会堆积；这里做个简单去重（同名且24h内不重复记）
-  const now = Date.now();
-  const recent24h = new Set(rec.filter(x=>x?.date && (now - new Date(x.date).getTime() <= 24*60*60*1000)).map(x=>x.name));
-
-  let added = 0;
-  for(const it of pending.items){
-    if(!it?.name) continue;
-    if(recent24h.has(it.name)) continue;
-    rec.push({ name: it.name, date: todayISO() });
-    added++;
-  }
+/* ---------- 确认 ---------- */
+$("confirmBtn").onclick=()=>{
+  const rec=loadRecent();
+  pending.forEach(it=>rec.push({name:it.name,date:new Date().toISOString()}));
   saveRecent(rec);
   renderRecent();
+  $("confirmHint").textContent="已记录，下次会避开";
+};
 
-  $("confirmHint").textContent = added ? "✅ 已记录！下次会尽量避开最近 7 天吃过的菜" : "已在 24 小时内记录过（本次不重复记）";
+/* ---------- 最近 ---------- */
+function renderRecent(){
+  const ul=$("recentList"); ul.innerHTML="";
+  loadRecent().slice(-20).reverse().forEach(x=>{
+    const li=document.createElement("li");
+    li.textContent=x.name;
+    ul.appendChild(li);
+  });
 }
+$("clearRecentBtn").onclick=()=>{ saveRecent([]); renderRecent(); };
 
-$("rollBtn").onclick = ()=>{
-  rerollCount = 0;
-  rollSingle();
-};
+/* ---------- 事件 ---------- */
+$("rollBtn").onclick=()=>{ rerollCount=0; rollSingle(); };
+$("mealBtn").onclick=()=>{ rerollCount=0; rollMeal(); };
+$("rerollBtn").onclick=()=>{ pending.length===1?rollSingle():rollMeal(); };
+$("resetBtn").onclick=()=>{ pending=null; $("resultCard").style.display="none"; $("rerollBtn").disabled=true; };
+$("cancelBtn").onclick=()=>{ $("confirmHint").textContent="未记录"; };
 
-$("mealBtn").onclick = ()=>{
-  rerollCount = 0;
-  rollMeal();
-};
+/* ---------- 初始化 ---------- */
+fetch("./menu.json?v="+Date.now())
+  .then(r=>r.json())
+  .then(j=>{
+    data=j;
+    $("status").textContent="菜单已加载";
+    const cats=$("cats");
+    j.categories.forEach((c,i)=>{
+      const d=document.createElement("div");
+      d.className="chip"+(i===0?" active":"");
+      d.textContent=c.name;
+      d.onclick=()=>{ currentCatId=c.id; [...cats.children].forEach(x=>x.classList.remove("active")); d.classList.add("active"); };
+      cats.appendChild(d);
+      if(i===0) currentCatId=c.id;
+    });
+  });
 
-$("rerollBtn").onclick = ()=>{
-  rerollCount++;
-  // 保持当前模式重抽
-  if(pending?.mode === "meal") rollMeal();
-  else rollSingle();
-};
-
-$("resetBtn").onclick = ()=>{
-  rerollCount = 0;
-  $("rerollBtn").disabled = true;
-  hideResult();
-};
-
-$("confirmBtn").onclick = confirmPending;
-
-$("cancelBtn").onclick = ()=>{
-  $("confirmHint").textContent = "👌 没记入最近吃过（只是看看）";
-};
-
-$("clearRecentBtn").onclick = ()=>{
-  if(confirm("确定清空本设备的“最近吃过”记录吗？")){
-    localStorage.removeItem(KEY_RECENT);
-    renderRecent();
-  }
-};
-
-async function init(){
-  updateHints();
-  renderRecent();
-
-  try{
-    const r = await fetch("./menu.json?v=" + Date.now());
-    const txt = await r.text();
-    const obj = JSON.parse(txt);
-
-    // 兼容你之前的结构：必须有 categories
-    if(!obj || !Array.isArray(obj.categories)){
-      $("status").textContent = "❌ menu.json 结构不对：需要 { categories: [...] }";
-      $("status").className = "muted";
-      return;
-    }
-    // 兜底 items
-    obj.categories.forEach(c=>{ if(!Array.isArray(c.items)) c.items = []; });
-
-    data = obj;
-    renderCategories();
-    $("status").textContent = `✅ 已加载菜单：${data.categories.length} 个分类`;
-  }catch(e){
-    $("status").textContent = "❌ 加载 menu.json 失败：" + e.message;
-  }
-}
-
-init();
+initPantryUI();
+renderRecent();
 </script>
 </body>
 </html>
